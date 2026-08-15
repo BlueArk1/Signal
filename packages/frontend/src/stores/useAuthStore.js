@@ -2,9 +2,21 @@ import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import { api, setToken, getToken } from '../api/client.js';
 
+// Decode JWT payload (unverified — used only to restore display info on refresh)
+function decodeToken(token) {
+  try {
+    const payload = token.split('.')[1];
+    const json = atob(payload.replace(/-/g, '+').replace(/_/g, '/'));
+    return JSON.parse(decodeURIComponent(escape(json)));
+  } catch {
+    return null;
+  }
+}
+
 export const useAuthStore = defineStore('auth', () => {
   const token = ref(getToken());
-  const user = ref(null);
+  // Restore user info from the stored token so the username survives refresh
+  const user = ref(token.value ? decodeToken(token.value) : null);
   const loading = ref(false);
   const error = ref('');
 
