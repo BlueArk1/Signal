@@ -21,6 +21,20 @@ const settings = useSettingsStore();
 const toast = useToastStore();
 
 const confirmBlock = ref(false);
+const menuOpen = ref(false);
+
+function toggleMenu() {
+  menuOpen.value = !menuOpen.value;
+}
+
+function closeMenu() {
+  menuOpen.value = false;
+}
+
+function openBlockUser() {
+  closeMenu();
+  confirmBlock.value = true;
+}
 
 const saved = computed(() => postStore.isSaved(props.post.id));
 const isImage = computed(() => {
@@ -78,7 +92,7 @@ async function blockFlair() {
 
 <template>
   <article
-    class="bg-white dark:bg-[#1e1e1e] rounded-lg shadow-sm hover:shadow-md transition-shadow overflow-hidden cursor-pointer sm:flex"
+    class="bg-white dark:bg-[#1e1e1e] rounded-lg shadow-sm hover:shadow-md transition-shadow cursor-pointer sm:flex"
     @click="openThread"
   >
     <!-- Image: full-width on mobile, left column on desktop -->
@@ -93,7 +107,7 @@ async function blockFlair() {
       <img
         :src="proxyImage(imageSrc)"
         :alt="post.title"
-        class="w-full max-h-64 sm:max-h-none sm:h-full sm:object-cover rounded sm:rounded-none"
+        class="w-full max-h-64 sm:max-h-none sm:h-full sm:object-cover rounded"
         loading="lazy"
       />
     </a>
@@ -153,20 +167,37 @@ async function blockFlair() {
         >
           {{ saved ? 'Saved' : 'Save' }}
         </button>
-        <button
+        <div
           v-if="auth.isAuthenticated && !confirmBlock"
-          class="flex items-center gap-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded px-2 py-1"
-          @click.stop="confirmBlock = true"
+          class="relative"
+          @click.stop
         >
-          Block user
-        </button>
-        <button
-          v-if="auth.isAuthenticated && post.link_flair_text"
-          class="flex items-center gap-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded px-2 py-1"
-          @click.stop="blockFlair"
-        >
-          Block flair
-        </button>
+          <button
+            class="flex items-center gap-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded px-2 py-1"
+            @click.stop="toggleMenu"
+            aria-label="More options"
+          >
+            ⋯
+          </button>
+          <div
+            v-if="menuOpen"
+            class="absolute left-0 top-full z-50 mt-1 w-44 rounded-md bg-white dark:bg-[#2a2a2a] shadow-lg ring-1 ring-black/5 py-1 text-white"
+          >
+            <button
+              class="block w-full text-left px-3 py-1.5 text-xs text-white hover:bg-gray-100 dark:hover:bg-gray-700"
+              @click.stop="openBlockUser"
+            >
+              Block user
+            </button>
+            <button
+              v-if="post.link_flair_text"
+              class="block w-full text-left px-3 py-1.5 text-xs text-white hover:bg-gray-100 dark:hover:bg-gray-700"
+              @click.stop="blockFlair"
+            >
+              Block flair
+            </button>
+          </div>
+        </div>
         <span
           v-if="auth.isAuthenticated && confirmBlock"
           class="flex items-center gap-1 text-xs"
