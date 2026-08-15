@@ -30,11 +30,15 @@ COPY packages/backend/src packages/backend/src
 # Copy built frontend from build stage
 COPY --from=build /app/packages/frontend/dist packages/frontend/dist
 
-# Non-root user for security
-RUN addgroup -S signal && adduser -S signal -G signal \
-  && mkdir -p /app/data && chown -R signal:signal /app
-USER signal
+# Non-root user for security. Entrypoint chowns the (possibly bind-mounted)
+# data dir, then drops privileges from root to this user.
+RUN apk add --no-cache su-exec \
+  && addgroup -S signal && adduser -S signal -G signal \
+  && mkdir -p /app/data
+
+COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
 EXPOSE 3000
 
-CMD ["node", "packages/backend/src/server.js"]
+ENTRYPOINT ["docker-entrypoint.sh"]
