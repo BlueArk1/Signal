@@ -185,7 +185,20 @@ router.post('/change-password', authLimiter, authRequired, async (req, res) => {
   db.prepare(
     'UPDATE users SET password_hash = ?, token_version = token_version + 1, must_change_password = 0 WHERE id = ?'
   ).run(hash, req.user.id);
-  res.json({ ok: true });
+  // Issue a fresh token+cookie with the new token_version so the session
+  // survives the password change (old cookie's tv no longer matches).
+  const updated = db
+    .prepare('SELECT id, username, token_version, must_change_password FROM users WHERE id = ?')
+    .get(req.user.id);
+  const newPayload = {
+    id: updated.id,
+    username: updated.username,
+    token_version: updated.token_version,
+    mustChangePassword: !!updated.must_change_password,
+  };
+  const newToken = signToken(newPayload);
+  setAuthCookie(res, newToken);
+  res.json({ ok: true, user: newPayload });
 });
 
 export default router;

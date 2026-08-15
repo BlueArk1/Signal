@@ -63,9 +63,9 @@ export const useAuthStore = defineStore('auth', () => {
     loading.value = true;
     error.value = '';
     try {
-      await api.post('/auth/change-password', { currentPassword, newPassword });
-      // Clear the forced-change flag locally after a successful change
-      if (user.value) user.value.mustChangePassword = false;
+      const data = await api.post('/auth/change-password', { currentPassword, newPassword });
+      // Backend issues a fresh cookie + returns updated user payload
+      if (data.user) user.value = data.user;
       return true;
     } catch (e) {
       error.value = e.message;
