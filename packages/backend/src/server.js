@@ -36,7 +36,10 @@ app.use(
       if (!origin || allowedOrigins.includes(origin)) {
         return callback(null, true);
       }
-      return callback(new Error('Not allowed by CORS'));
+      // Reject disallowed origins with 403 (not a 500)
+      const err = new Error('Not allowed by CORS');
+      err.status = 403;
+      return callback(err);
     },
   })
 );
@@ -67,7 +70,9 @@ app.use((err, req, res, next) => {
   } else {
     console.error(err);
   }
-  res.status(500).json({ error: 'Internal server error' });
+  // Respect explicit status codes (e.g. CORS 403) instead of always 500
+  const status = err.status || 500;
+  res.status(status).json({ error: err.message || 'Internal server error' });
 });
 
 const server = app.listen(PORT, () => {
