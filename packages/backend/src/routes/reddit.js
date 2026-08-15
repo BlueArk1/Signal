@@ -15,7 +15,7 @@ const router = Router();
 const SORTS = ['hot', 'new', 'top', 'controversial'];
 
 // GET /api/reddit/cache/stats
-router.get('/cache/stats', (req, res) => {
+router.get('/cache/stats', authRequired, (req, res) => {
   res.json(diskCacheStats());
 });
 
@@ -40,7 +40,7 @@ router.get('/r/:subreddit', authRequired, redditLimiter, async (req, res) => {
 });
 
 // GET /api/reddit/search/subreddits?q=...
-router.get('/search/subreddits', redditLimiter, async (req, res) => {
+router.get('/search/subreddits', authRequired, redditLimiter, async (req, res) => {
   const q = (req.query.q || '').trim();
   if (!q) return res.json({ subreddits: [] });
   try {
@@ -52,7 +52,7 @@ router.get('/search/subreddits', redditLimiter, async (req, res) => {
 });
 
 // GET /api/reddit/comments/:subreddit/:postId
-router.get('/comments/:subreddit/:postId', redditLimiter, async (req, res) => {
+router.get('/comments/:subreddit/:postId', authRequired, redditLimiter, async (req, res) => {
   const { subreddit, postId } = req.params;
   if (!isValidSubreddit(subreddit) || !isValidPostId(postId)) {
     return res.status(400).json({ error: 'Invalid subreddit or post id' });
@@ -76,7 +76,7 @@ const ALLOWED_IMAGE_HOSTS = new Set([
   'a.thumbs.redditmedia.com',
 ]);
 
-router.get('/image', async (req, res) => {
+router.get('/image', authRequired, redditLimiter, async (req, res) => {
   let url = req.query.url;
   if (!url || typeof url !== 'string') {
     return res.status(400).json({ error: 'url query param required' });
@@ -110,18 +110,42 @@ router.get('/image', async (req, res) => {
     if (!upstream.ok) {
       return res.status(upstream.status).json({ error: `Upstream ${upstream.status}` });
     }
-    const contentType = upstream.headers.get('content-type') || 'image/jpeg';
+    // Only proxy actual images — never trust upstream content-type blindly
+    const contentType = upstream.headers.get('content-type') || '';
+    if (!contentType.startsWith('image/')) {
+      return res.status(502).json({ error: 'Upstream returned non-image content' });
+    }
     res.setHeader('Content-Type', contentType);
     res.setHeader('Cache-Control', 'public, max-age=86400');
-    // Stream the response body instead of buffering the whole file in memory
+    // Stream the response body instead of buffering the whole file in memory,
+    // with a hard size cap to prevent bandwidth abuse.
+    const MAX_BYTES = 20 * 1024 * 1024; // 20 MB
     const reader = upstream.body.getReader();
+    let total = 0;
     res.on('close', () => reader.cancel().catch(() => {}));
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      res.write(value);
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        total += value.length;
+        if (total > MAX_BYTES) {
+          reader.cancel().catch(() => {});
+          if (!res.headersSent) {
+            return res.status(413).json({ error: 'Image too large' });
+          }
+          return res.end();
+        }
+        res.write(value);
+      }
+      res.end();
+    } catch (err) {
+      // Client disconnected mid-stream — ignore
+      if (!res.headersSent) {
+        res.status(502).json({ error: 'Failed to fetch image' });
+      } else {
+        res.end();
+      }
     }
-    res.end();
   } catch (err) {
     if (!res.headersSent) {
       res.status(502).json({ error: 'Failed to fetch image' });
