@@ -22,3 +22,11 @@ services:
       DATA_DIR: /app/data
     volumes:
       - ./data:/app/data
+    networks:
+      - prod-proxy
+
+
+
+networks:
+  prod-proxy:
+    external: true
