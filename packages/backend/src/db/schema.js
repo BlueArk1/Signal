@@ -44,7 +44,7 @@ db.exec(`
   CREATE TABLE IF NOT EXISTS blocked_rules (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    type TEXT NOT NULL CHECK (type IN ('keyword', 'user', 'subreddit')),
+    type TEXT NOT NULL CHECK (type IN ('keyword', 'user', 'subreddit', 'flair')),
     value TEXT NOT NULL,
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     UNIQUE(user_id, type, value)

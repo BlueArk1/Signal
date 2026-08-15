@@ -12,6 +12,7 @@ const newSub = ref('');
 const newKeyword = ref('');
 const newUser = ref('');
 const newBlockedSub = ref('');
+const newFlair = ref('');
 const pwForm = ref({ currentPassword: '', newPassword: '' });
 const pwError = ref('');
 const pwSuccess = ref('');
@@ -24,10 +25,13 @@ async function addSubscription() {
   newSub.value = '';
 }
 
-async function addBlock(type, valueRef) {
-  if (!valueRef.value.trim()) return;
-  await settings.addBlock(type, valueRef.value);
-  valueRef.value = '';
+async function addBlock(type, value) {
+  if (!value || !value.trim()) return;
+  await settings.addBlock(type, value);
+  if (type === 'keyword') newKeyword.value = '';
+  else if (type === 'user') newUser.value = '';
+  else if (type === 'subreddit') newBlockedSub.value = '';
+  else if (type === 'flair') newFlair.value = '';
 }
 
 async function submitPassword() {
@@ -54,7 +58,7 @@ async function submitPassword() {
     </p>
 
     <!-- Change password -->
-    <section v-if="auth.isAuthenticated" class="bg-white dark:bg-[#1e1e1e] rounded border border-gray-300 dark:border-[#3a3a3a] p-4">
+    <section v-if="auth.isAuthenticated" class="bg-white dark:bg-[#1e1e1e] rounded-lg shadow-sm p-4">
       <h2 class="font-semibold mb-3">Change password</h2>
       <form @submit.prevent="submitPassword" class="space-y-3 max-w-sm">
         <input
@@ -82,7 +86,7 @@ async function submitPassword() {
     </section>
 
     <!-- Subscriptions -->
-    <section class="bg-white dark:bg-[#1e1e1e] rounded border border-gray-300 dark:border-[#3a3a3a] p-4">
+    <section class="bg-white dark:bg-[#1e1e1e] rounded-lg shadow-sm p-4">
       <h2 class="font-semibold mb-3">Subscriptions</h2>
       <div class="flex gap-2 mb-3">
         <input
@@ -110,7 +114,7 @@ async function submitPassword() {
     </section>
 
     <!-- Blocked keywords -->
-    <section class="bg-white dark:bg-[#1e1e1e] rounded border border-gray-300 dark:border-[#3a3a3a] p-4">
+    <section class="bg-white dark:bg-[#1e1e1e] rounded-lg shadow-sm p-4">
       <h2 class="font-semibold mb-3">Blocked keywords</h2>
       <div class="flex gap-2 mb-3">
         <input
@@ -138,7 +142,7 @@ async function submitPassword() {
     </section>
 
     <!-- Blocked users -->
-    <section class="bg-white dark:bg-[#1e1e1e] rounded border border-gray-300 dark:border-[#3a3a3a] p-4">
+    <section class="bg-white dark:bg-[#1e1e1e] rounded-lg shadow-sm p-4">
       <h2 class="font-semibold mb-3">Blocked users</h2>
       <div class="flex gap-2 mb-3">
         <input
@@ -166,7 +170,7 @@ async function submitPassword() {
     </section>
 
     <!-- Blocked subreddits -->
-    <section class="bg-white dark:bg-[#1e1e1e] rounded border border-gray-300 dark:border-[#3a3a3a] p-4">
+    <section class="bg-white dark:bg-[#1e1e1e] rounded-lg shadow-sm p-4">
       <h2 class="font-semibold mb-3">Blocked subreddits</h2>
       <div class="flex gap-2 mb-3">
         <input
@@ -189,6 +193,34 @@ async function submitPassword() {
         >
           r/{{ s }}
           <button class="text-red-500" @click="settings.removeBlock('subreddit', s)">×</button>
+        </span>
+      </div>
+    </section>
+
+    <!-- Blocked flairs -->
+    <section class="bg-white dark:bg-[#1e1e1e] rounded-lg shadow-sm p-4">
+      <h2 class="font-semibold mb-3">Blocked flairs</h2>
+      <div class="flex gap-2 mb-3">
+        <input
+          v-model="newFlair"
+          type="text"
+          placeholder="e.g. Meme"
+          class="flex-1 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-sm bg-white dark:bg-gray-700 dark:text-gray-100"
+          @keyup.enter="addBlock('flair', newFlair)"
+        />
+        <button class="bg-[#0d6efd] text-white rounded px-4 py-2 text-sm hover:bg-[#0b5ed7]" @click="addBlock('flair', newFlair)">
+          Add
+        </button>
+      </div>
+      <div v-if="!settings.blocks.flairs.length" class="text-sm text-gray-400 dark:text-gray-500">No blocked flairs.</div>
+      <div class="flex flex-wrap gap-2">
+        <span
+          v-for="f in settings.blocks.flairs"
+          :key="f"
+          class="inline-flex items-center gap-1 bg-gray-100 dark:bg-gray-700 rounded-full px-3 py-1 text-sm"
+        >
+          {{ f }}
+          <button class="text-red-500" @click="settings.removeBlock('flair', f)">×</button>
         </span>
       </div>
     </section>

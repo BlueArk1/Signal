@@ -79,7 +79,7 @@ router.get('/blocks', (req, res) => {
 
 router.post('/blocks', (req, res) => {
   const { type, value } = req.body || {};
-  if (!['keyword', 'user', 'subreddit'].includes(type)) {
+  if (!['keyword', 'user', 'subreddit', 'flair'].includes(type)) {
     return res.status(400).json({ error: 'Invalid block type' });
   }
   const clean = (value || '').trim().toLowerCase();
@@ -95,7 +95,7 @@ router.post('/blocks', (req, res) => {
 
 router.delete('/blocks/:type/:value', (req, res) => {
   const { type, value } = req.params;
-  if (!['keyword', 'user', 'subreddit'].includes(type)) {
+  if (!['keyword', 'user', 'subreddit', 'flair'].includes(type)) {
     return res.status(400).json({ error: 'Invalid block type' });
   }
   db.prepare('DELETE FROM blocked_rules WHERE user_id = ? AND type = ? AND value = ?').run(

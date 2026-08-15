@@ -6,7 +6,7 @@ import { useToastStore } from './useToastStore.js';
 
 export const useSettingsStore = defineStore('settings', () => {
   const subscriptions = ref([]);
-  const blocks = ref({ keywords: [], users: [], subreddits: [] });
+  const blocks = ref({ keywords: [], users: [], subreddits: [], flairs: [] });
   const loading = ref(false);
 
   const auth = useAuthStore();
@@ -14,7 +14,7 @@ export const useSettingsStore = defineStore('settings', () => {
   const isAuthenticated = computed(() => auth.isAuthenticated);
 
   // Map singular API type -> plural array key in blocks
-  const typeMap = { keyword: 'keywords', user: 'users', subreddit: 'subreddits' };
+  const typeMap = { keyword: 'keywords', user: 'users', subreddit: 'subreddits', flair: 'flairs' };
 
   async function load() {
     if (!auth.isAuthenticated) return;
@@ -30,6 +30,7 @@ export const useSettingsStore = defineStore('settings', () => {
         keywords: b.filter((x) => x.type === 'keyword').map((x) => x.value),
         users: b.filter((x) => x.type === 'user').map((x) => x.value),
         subreddits: b.filter((x) => x.type === 'subreddit').map((x) => x.value),
+        flairs: b.filter((x) => x.type === 'flair').map((x) => x.value),
       };
     } catch {
       // ignore

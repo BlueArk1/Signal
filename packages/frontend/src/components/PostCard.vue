@@ -12,7 +12,6 @@ const props = defineProps({
   post: { type: Object, required: true },
   hideImages: { type: Boolean, default: false },
   hideAuthor: { type: Boolean, default: false },
-  thumbPosition: { type: String, default: 'left' }, // 'left' | 'right'
 });
 
 const router = useRouter();
@@ -31,6 +30,15 @@ const isImage = computed(() => {
 const hasThumb = computed(() => {
   const t = props.post.thumbnail;
   return t && !['self', 'default', 'nsfw', 'spoiler', 'image'].includes(t);
+});
+// Pick the highest-resolution image available:
+// 1. preview source (full-res) 2. direct image URL 3. thumbnail (fallback)
+const imageSrc = computed(() => {
+  const preview = props.post.preview?.images?.[0]?.source?.url;
+  if (preview) return preview;
+  if (isImage.value) return props.post.url;
+  if (hasThumb.value) return props.post.thumbnail;
+  return '';
 });
 // Show domain in brackets for link posts (self posts have no external domain)
 const domain = computed(() => {
@@ -60,32 +68,39 @@ async function blockUser() {
   confirmBlock.value = false;
   toast.push(`Blocked u/${props.post.author}`);
 }
+
+async function blockFlair() {
+  if (!auth.isAuthenticated || !props.post.link_flair_text) return;
+  await settings.addBlock('flair', props.post.link_flair_text);
+  toast.push(`Blocked flair "${props.post.link_flair_text}"`);
+}
 </script>
 
 <template>
   <article
-    class="bg-white dark:bg-[#1e1e1e] rounded border border-gray-300 dark:border-[#3a3a3a] hover:border-gray-400 dark:hover:border-gray-600 flex overflow-hidden cursor-pointer"
+    class="bg-white dark:bg-[#1e1e1e] rounded-lg shadow-sm hover:shadow-md transition-shadow overflow-hidden cursor-pointer sm:flex"
     @click="openThread"
   >
-    <!-- Thumbnail (left or right based on thumbPosition) -->
+    <!-- Image: full-width on mobile, left column on desktop -->
     <a
-      v-if="!hideImages && (isImage || hasThumb) && thumbPosition === 'left'"
+      v-if="!hideImages && imageSrc"
       :href="post.url"
       target="_blank"
       rel="noopener"
-      class="shrink-0 w-24 sm:w-32 self-center m-3"
+      class="block sm:shrink-0 sm:w-48 sm:self-stretch"
       @click.stop
     >
       <img
-        :src="proxyImage(isImage ? post.url : post.thumbnail)"
+        :src="proxyImage(imageSrc)"
         :alt="post.title"
-        class="w-full h-20 sm:h-24 object-cover rounded"
+        class="w-full max-h-64 sm:max-h-none sm:h-full sm:object-cover rounded sm:rounded-none"
         loading="lazy"
       />
     </a>
 
     <!-- Content -->
-    <div class="flex-1 min-w-0 p-3">
+    <div class="p-3 flex-1 min-w-0">
+      <!-- Row 1: subreddit + time -->
       <div class="flex items-center gap-1 text-xs text-gray-500 flex-wrap">
         <span
           v-if="post.stickied"
@@ -101,25 +116,35 @@ async function blockUser() {
           r/{{ post.subreddit }}
         </router-link>
         <span>·</span>
-        <span v-if="!hideAuthor">Posted by u/{{ post.author }}</span>
-        <span v-if="!hideAuthor">·</span>
         <span>{{ timeAgo(post.created_utc) }}</span>
-        <span v-if="post.score !== undefined" class="ml-1">{{ post.score?.toLocaleString() }} points</span>
-        <span v-if="post.link_flair_text" class="ml-1 px-1.5 py-0.5 rounded bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 text-xs">
+        <span
+          v-if="post.link_flair_text"
+          class="ml-auto px-1.5 py-0.5 rounded bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 text-xs"
+        >
           {{ post.link_flair_text }}
         </span>
       </div>
 
-      <button class="block text-left mt-1 text-base font-medium hover:underline" @click.stop="openThread">
+      <!-- Row 2: username of poster -->
+      <div v-if="!hideAuthor" class="mt-1 text-xs text-gray-500">
+        u/{{ post.author }}
+      </div>
+
+      <!-- Row 3: title -->
+      <button class="block text-left mt-2 text-base font-medium hover:underline wrap-break-word" @click.stop="openThread">
         {{ post.title }}
         <span v-if="domain" class="text-xs font-normal text-gray-400 dark:text-gray-500"> ({{ domain }})</span>
       </button>
 
-      <p v-if="post.selftext" class="mt-1 text-[15px] text-gray-700 dark:text-gray-300 line-clamp-2">{{ post.selftext }}</p>
+      <p v-if="post.selftext" class="mt-1 text-[15px] text-gray-700 dark:text-gray-300 line-clamp-2 wrap-break-word">{{ post.selftext }}</p>
 
-      <div class="mt-2 flex items-center gap-3 text-xs text-gray-500">
+      <!-- Row 4: karma, comments, save, block -->
+      <div class="mt-2 flex items-center gap-3 text-xs text-gray-500 flex-wrap">
+        <span v-if="post.score !== undefined" class="flex items-center gap-1">
+          ▲ {{ post.score?.toLocaleString() }}
+        </span>
         <button class="flex items-center gap-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded px-2 py-1" @click.stop="openThread">
-          {{ post.num_comments?.toLocaleString() }} Comments
+           {{ post.num_comments?.toLocaleString() }} Comments
         </button>
         <button
           class="flex items-center gap-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded px-2 py-1"
@@ -134,6 +159,13 @@ async function blockUser() {
           @click.stop="confirmBlock = true"
         >
           Block user
+        </button>
+        <button
+          v-if="auth.isAuthenticated && post.link_flair_text"
+          class="flex items-center gap-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded px-2 py-1"
+          @click.stop="blockFlair"
+        >
+          Block flair
         </button>
         <span
           v-if="auth.isAuthenticated && confirmBlock"
@@ -155,22 +187,5 @@ async function blockUser() {
         </span>
       </div>
     </div>
-
-    <!-- Thumbnail on the right -->
-    <a
-      v-if="!hideImages && (isImage || hasThumb) && thumbPosition === 'right'"
-      :href="post.url"
-      target="_blank"
-      rel="noopener"
-      class="shrink-0 w-24 sm:w-32 self-center m-3"
-      @click.stop
-    >
-      <img
-        :src="proxyImage(isImage ? post.url : post.thumbnail)"
-        :alt="post.title"
-        class="w-full h-20 sm:h-24 object-cover rounded"
-        loading="lazy"
-      />
-    </a>
   </article>
 </template>
