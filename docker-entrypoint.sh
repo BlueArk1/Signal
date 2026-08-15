@@ -10,4 +10,6 @@ if [ ! -w /app/data ]; then
   exit 1
 fi
 
-exec node packages/backend/src/server.js
+# node:sqlite is experimental in Node 22.x and requires the flag (unflagged
+# only in Node 23.4+). Local dev on Node 26 doesn't need it.
+exec node --experimental-sqlite packages/backend/src/server.js
