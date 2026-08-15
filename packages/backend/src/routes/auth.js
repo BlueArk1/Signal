@@ -11,10 +11,16 @@ const REGISTRATION_ENABLED = process.env.ALLOW_REGISTRATION !== 'false';
 // httpOnly cookie options — token not readable by JS (XSS-safe)
 const COOKIE_NAME = 'signal_token';
 const isProd = process.env.NODE_ENV === 'production';
+// Secure cookie by default in production, but allow override for setups where
+// TLS is terminated at a reverse proxy and the upstream is plain HTTP (the
+// browser would otherwise drop a Secure cookie over http://).
+const cookieSecure = process.env.COOKIE_SECURE !== undefined
+  ? process.env.COOKIE_SECURE === 'true'
+  : isProd;
 const cookieOptions = {
   httpOnly: true,
   sameSite: 'lax',
-  secure: isProd,
+  secure: cookieSecure,
   maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
   path: '/',
 };
