@@ -12,19 +12,20 @@ if (!JWT_SECRET || JWT_SECRET === 'dev-secret' || JWT_SECRET === 'change-me-to-a
 }
 
 const ACTIVE_SECRET = JWT_SECRET || 'dev-secret';
+const JWT_ALGORITHM = 'HS256';
 
 export function signToken(user) {
   return jwt.sign(
     { id: user.id, username: user.username, tv: user.token_version ?? 0 },
     ACTIVE_SECRET,
-    { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
+    { expiresIn: process.env.JWT_EXPIRES_IN || '7d', algorithm: JWT_ALGORITHM }
   );
 }
 
 // Verify token signature + check token_version matches current DB value.
 // Returns the verified payload or null.
 function verifyToken(token) {
-  const payload = jwt.verify(token, ACTIVE_SECRET);
+  const payload = jwt.verify(token, ACTIVE_SECRET, { algorithms: [JWT_ALGORITHM] });
   if (typeof payload.tv !== 'number') return null;
   const row = db.prepare('SELECT token_version FROM users WHERE id = ?').get(payload.id);
   if (!row || row.token_version !== payload.tv) return null;
