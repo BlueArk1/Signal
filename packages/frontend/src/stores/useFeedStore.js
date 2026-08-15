@@ -5,7 +5,6 @@ import { api } from '../api/client.js';
 export const useFeedStore = defineStore('feed', () => {
   const posts = ref([]);
   const sort = ref('hot');
-  const thumbPosition = ref('left'); // 'left' | 'right'
   const loading = ref(false);
   const error = ref('');
   const fromCache = ref(false);
@@ -96,10 +95,6 @@ export const useFeedStore = defineStore('feed', () => {
     sort.value = s;
   }
 
-  function setThumbPosition(pos) {
-    thumbPosition.value = pos;
-  }
-
   // Reset the shuffle flag so the next home build reshuffles (e.g. on sub change)
   function resetShuffle() {
     shuffled = false;
@@ -110,14 +105,12 @@ export const useFeedStore = defineStore('feed', () => {
   return {
     posts,
     sort,
-    thumbPosition,
     loading,
     error,
     fromCache,
     fetchSubreddit,
     fetchHome,
     setSort,
-    setThumbPosition,
     resetShuffle,
   };
 });
