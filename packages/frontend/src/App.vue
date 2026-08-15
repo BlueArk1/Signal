@@ -17,18 +17,20 @@ const drawerOpen = ref(false);
 // Public routes (e.g. login) render standalone without the app chrome
 const isPublic = computed(() => !!route.meta.public);
 
-onMounted(() => {
-  settings.load();
-  postStore.loadSaved();
+onMounted(async () => {
+  if (auth.isAuthenticated) {
+    await settings.load();
+    await postStore.loadSaved();
+  }
 });
 
 // Reload user data when auth state changes (login/logout)
 watch(
   () => auth.isAuthenticated,
-  (authed) => {
+  async (authed) => {
     if (authed) {
-      settings.load();
-      postStore.loadSaved();
+      await settings.load();
+      await postStore.loadSaved();
     } else {
       settings.clear();
       postStore.clear();

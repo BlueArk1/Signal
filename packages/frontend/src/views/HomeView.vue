@@ -16,6 +16,21 @@ useInfiniteScroll(() => feed.loadMore());
 let initialLoadDone = false;
 
 async function load() {
+  if (settings.loading) {
+    // Wait for settings to finish loading subscriptions if in flight
+    await new Promise((resolve) => {
+      const unwatch = watch(
+        () => settings.loading,
+        (isLoading) => {
+          if (!isLoading) {
+            unwatch();
+            resolve();
+          }
+        },
+        { immediate: !settings.loading }
+      );
+    });
+  }
   await feed.fetchHome(settings.subscriptions);
   initialLoadDone = true;
 }
