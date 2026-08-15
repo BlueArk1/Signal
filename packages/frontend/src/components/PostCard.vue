@@ -1,12 +1,12 @@
 <script setup>
-import { computed, ref } from 'vue';
+import { computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { usePostStore } from '../stores/usePostStore.js';
 import { useAuthStore } from '../stores/useAuthStore.js';
-import { useSettingsStore } from '../stores/useSettingsStore.js';
 import { useToastStore } from '../stores/useToastStore.js';
 import { proxyImage } from '../api/client.js';
 import { timeAgo } from '../composables/useTimeAgo.js';
+import { useBlockActions } from '../composables/useBlockActions.js';
 
 const props = defineProps({
   post: { type: Object, required: true },
@@ -17,30 +17,18 @@ const props = defineProps({
 const router = useRouter();
 const postStore = usePostStore();
 const auth = useAuthStore();
-const settings = useSettingsStore();
 const toast = useToastStore();
 
-const confirmBlock = ref(false);
-const confirmFlair = ref(false);
-const menuOpen = ref(false);
-
-function toggleMenu() {
-  menuOpen.value = !menuOpen.value;
-}
-
-function closeMenu() {
-  menuOpen.value = false;
-}
-
-function openBlockUser() {
-  closeMenu();
-  confirmBlock.value = true;
-}
-
-function openBlockFlair() {
-  closeMenu();
-  confirmFlair.value = true;
-}
+const {
+  confirmBlock,
+  confirmFlair,
+  menuOpen,
+  toggleMenu,
+  openBlockUser,
+  openBlockFlair,
+  blockUser,
+  blockFlair,
+} = useBlockActions(props.post);
 
 const saved = computed(() => postStore.isSaved(props.post.id));
 const isImage = computed(() => {
@@ -80,18 +68,6 @@ async function toggleSave() {
     await postStore.savePost(props.post);
     toast.push('Post saved');
   }
-}
-
-async function blockUser() {
-  if (!auth.isAuthenticated) return;
-  await settings.addBlock('user', props.post.author);
-  confirmBlock.value = false;
-}
-
-async function blockFlair() {
-  if (!auth.isAuthenticated || !props.post.link_flair_text) return;
-  await settings.addBlock('flair', props.post.link_flair_text, props.post.subreddit);
-  confirmFlair.value = false;
 }
 </script>
 
