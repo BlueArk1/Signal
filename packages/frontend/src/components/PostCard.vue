@@ -21,6 +21,7 @@ const settings = useSettingsStore();
 const toast = useToastStore();
 
 const confirmBlock = ref(false);
+const confirmFlair = ref(false);
 const menuOpen = ref(false);
 
 function toggleMenu() {
@@ -34,6 +35,11 @@ function closeMenu() {
 function openBlockUser() {
   closeMenu();
   confirmBlock.value = true;
+}
+
+function openBlockFlair() {
+  closeMenu();
+  confirmFlair.value = true;
 }
 
 const saved = computed(() => postStore.isSaved(props.post.id));
@@ -80,13 +86,12 @@ async function blockUser() {
   if (!auth.isAuthenticated) return;
   await settings.addBlock('user', props.post.author);
   confirmBlock.value = false;
-  toast.push(`Blocked u/${props.post.author}`);
 }
 
 async function blockFlair() {
   if (!auth.isAuthenticated || !props.post.link_flair_text) return;
-  await settings.addBlock('flair', props.post.link_flair_text);
-  toast.push(`Blocked flair "${props.post.link_flair_text}"`);
+  await settings.addBlock('flair', props.post.link_flair_text, props.post.subreddit);
+  confirmFlair.value = false;
 }
 </script>
 
@@ -192,7 +197,7 @@ async function blockFlair() {
             <button
               v-if="post.link_flair_text"
               class="block w-full text-left px-3 py-1.5 text-xs text-white hover:bg-gray-100 dark:hover:bg-gray-700"
-              @click.stop="blockFlair"
+              @click.stop="openBlockFlair"
             >
               Block flair
             </button>
@@ -212,6 +217,24 @@ async function blockFlair() {
           <button
             class="px-2 py-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700"
             @click.stop="confirmBlock = false"
+          >
+            Cancel
+          </button>
+        </span>
+        <span
+          v-if="auth.isAuthenticated && confirmFlair"
+          class="flex items-center gap-1 text-xs"
+        >
+          <span class="text-gray-500 dark:text-gray-400">Block flair "{{ post.link_flair_text }}" on r/{{ post.subreddit }}?</span>
+          <button
+            class="px-2 py-1 rounded bg-red-600 text-white hover:bg-red-700"
+            @click.stop="blockFlair"
+          >
+            Confirm
+          </button>
+          <button
+            class="px-2 py-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700"
+            @click.stop="confirmFlair = false"
           >
             Cancel
           </button>

@@ -30,7 +30,9 @@ export const useSettingsStore = defineStore('settings', () => {
         keywords: b.filter((x) => x.type === 'keyword').map((x) => x.value),
         users: b.filter((x) => x.type === 'user').map((x) => x.value),
         subreddits: b.filter((x) => x.type === 'subreddit').map((x) => x.value),
-        flairs: b.filter((x) => x.type === 'flair').map((x) => x.value),
+        flairs: b
+          .filter((x) => x.type === 'flair')
+          .map((x) => ({ subreddit: x.subreddit, value: x.value })),
       };
     } catch {
       // ignore
@@ -56,20 +58,38 @@ export const useSettingsStore = defineStore('settings', () => {
     toast.push(`Unsubscribed from r/${subreddit}`);
   }
 
-  async function addBlock(type, value) {
+  async function addBlock(type, value, subreddit) {
     if (!auth.isAuthenticated) return false;
     const clean = value.trim().toLowerCase();
     if (!clean) return false;
-    await api.post('/user/blocks', { type, value: clean });
-    blocks.value[typeMap[type]].push(clean);
-    toast.push(`Blocked ${clean}`);
+    await api.post('/user/blocks', { type, value: clean, subreddit });
+    if (type === 'flair') {
+      const sub = (subreddit || '').toLowerCase();
+      blocks.value.flairs.push({ subreddit: sub, value: clean });
+      toast.push(
+        `Blocked flair "${clean}" on r/${sub}`,
+        'success',
+        10000,
+        { label: 'Undo', run: () => removeBlock('flair', clean, sub) }
+      );
+    } else {
+      blocks.value[typeMap[type]].push(clean);
+      toast.push(`Blocked ${clean}`);
+    }
     return true;
   }
 
-  async function removeBlock(type, value) {
+  async function removeBlock(type, value, subreddit) {
     if (!auth.isAuthenticated) return;
-    await api.del(`/user/blocks/${type}/${value}`);
-    blocks.value[typeMap[type]] = blocks.value[typeMap[type]].filter((v) => v !== value);
+    const sub = type === 'flair' ? (subreddit || '').toLowerCase() : undefined;
+    await api.del(`/user/blocks/${type}/${value}${sub ? `?subreddit=${encodeURIComponent(sub)}` : ''}`);
+    if (type === 'flair') {
+      blocks.value.flairs = blocks.value.flairs.filter(
+        (f) => !(f.value === value && f.subreddit === sub)
+      );
+    } else {
+      blocks.value[typeMap[type]] = blocks.value[typeMap[type]].filter((v) => v !== value);
+    }
     toast.push(`Removed block: ${value}`);
   }
 

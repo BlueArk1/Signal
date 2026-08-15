@@ -45,11 +45,33 @@ db.exec(`
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     type TEXT NOT NULL CHECK (type IN ('keyword', 'user', 'subreddit', 'flair')),
+    subreddit TEXT,
     value TEXT NOT NULL,
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
-    UNIQUE(user_id, type, value)
+    UNIQUE(user_id, type, subreddit, value)
   );
 `);
+
+// Migration: add per-subreddit flair support (subreddit column on blocked_rules).
+// Rebuilds the table so the unique index includes subreddit.
+const blockCols = db.prepare('PRAGMA table_info(blocked_rules)').all();
+if (!blockCols.some((c) => c.name === 'subreddit')) {
+  db.exec(`
+    ALTER TABLE blocked_rules RENAME TO blocked_rules_old;
+    CREATE TABLE blocked_rules (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      type TEXT NOT NULL CHECK (type IN ('keyword', 'user', 'subreddit', 'flair')),
+      subreddit TEXT,
+      value TEXT NOT NULL,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      UNIQUE(user_id, type, subreddit, value)
+    );
+    INSERT INTO blocked_rules (id, user_id, type, subreddit, value, created_at)
+      SELECT id, user_id, type, NULL, value, created_at FROM blocked_rules_old;
+    DROP TABLE blocked_rules_old;
+  `);
+}
 
 // Seed a default user only if NO users exist at all.
 // Generate a random password and print it to the console.

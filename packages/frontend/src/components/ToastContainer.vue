@@ -20,6 +20,13 @@ const typeStyles = {
         :class="typeStyles[t.type] || typeStyles.info"
       >
         <span>{{ t.message }}</span>
+        <button
+          v-if="t.action"
+          class="font-semibold underline opacity-90 hover:opacity-100"
+          @click="t.action.run(); toast.remove(t.id)"
+        >
+          {{ t.action.label }}
+        </button>
         <button class="opacity-70 hover:opacity-100 text-base leading-none" @click="toast.remove(t.id)">×</button>
       </div>
     </transition-group>

@@ -2,17 +2,25 @@ import db from '../db/schema.js';
 
 /**
  * Load all block rules for a user directly from the DB.
- * @returns {{ keywords: string[], users: string[], subreddits: string[], flairs: string[] }}
+ * @returns {{ keywords: string[], users: string[], subreddits: string[], flairs: Array<{subreddit: string|null, value: string}> }}
  */
 export function getBlockRules(userId) {
   const rows = db
-    .prepare('SELECT type, value FROM blocked_rules WHERE user_id = ?')
+    .prepare('SELECT type, subreddit, value FROM blocked_rules WHERE user_id = ?')
     .all(userId);
   const rules = { keywords: [], users: [], subreddits: [], flairs: [] };
   const typeMap = { keyword: 'keywords', user: 'users', subreddit: 'subreddits', flair: 'flairs' };
   for (const row of rows) {
     const key = typeMap[row.type];
-    if (key) rules[key].push(row.value.toLowerCase());
+    if (!key) continue;
+    if (row.type === 'flair') {
+      rules.flairs.push({
+        subreddit: row.subreddit ? row.subreddit.toLowerCase() : null,
+        value: row.value.toLowerCase(),
+      });
+    } else {
+      rules[key].push(row.value.toLowerCase());
+    }
   }
   return rules;
 }
@@ -43,7 +51,9 @@ export function filterPosts(posts, userId) {
     if (rules.users.includes(author)) return false;
 
     const flair = (post.link_flair_text || '').toLowerCase();
-    if (rules.flairs.includes(flair)) return false;
+    if (flair && rules.flairs.some((f) => f.value === flair && (f.subreddit === null || f.subreddit === sub))) {
+      return false;
+    }
 
     const haystack = `${post.title || ''} ${post.selftext || ''}`.toLowerCase();
     if (rules.keywords.some((k) => haystack.includes(k))) return false;

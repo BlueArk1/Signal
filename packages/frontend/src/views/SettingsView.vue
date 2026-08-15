@@ -13,6 +13,7 @@ const newKeyword = ref('');
 const newUser = ref('');
 const newBlockedSub = ref('');
 const newFlair = ref('');
+const newFlairSub = ref('');
 const pwForm = ref({ currentPassword: '', newPassword: '' });
 const pwError = ref('');
 const pwSuccess = ref('');
@@ -27,11 +28,17 @@ async function addSubscription() {
 
 async function addBlock(type, value) {
   if (!value || !value.trim()) return;
-  await settings.addBlock(type, value);
-  if (type === 'keyword') newKeyword.value = '';
-  else if (type === 'user') newUser.value = '';
-  else if (type === 'subreddit') newBlockedSub.value = '';
-  else if (type === 'flair') newFlair.value = '';
+  const sub = type === 'flair' ? newFlairSub.value : undefined;
+  const ok = await settings.addBlock(type, value, sub);
+  if (ok) {
+    if (type === 'keyword') newKeyword.value = '';
+    else if (type === 'user') newUser.value = '';
+    else if (type === 'subreddit') newBlockedSub.value = '';
+    else if (type === 'flair') {
+      newFlair.value = '';
+      newFlairSub.value = '';
+    }
+  }
 }
 
 async function submitPassword() {
@@ -202,6 +209,12 @@ async function submitPassword() {
       <h2 class="font-semibold mb-3">Blocked flairs</h2>
       <div class="flex gap-2 mb-3">
         <input
+          v-model="newFlairSub"
+          type="text"
+          placeholder="subreddit"
+          class="w-32 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-sm bg-white dark:bg-gray-700 dark:text-gray-100"
+        />
+        <input
           v-model="newFlair"
           type="text"
           placeholder="e.g. Meme"
@@ -216,11 +229,11 @@ async function submitPassword() {
       <div class="flex flex-wrap gap-2">
         <span
           v-for="f in settings.blocks.flairs"
-          :key="f"
+          :key="f.subreddit + '/' + f.value"
           class="inline-flex items-center gap-1 bg-gray-100 dark:bg-gray-700 rounded-full px-3 py-1 text-sm"
         >
-          {{ f }}
-          <button class="text-red-500" @click="settings.removeBlock('flair', f)">×</button>
+          r/{{ f.subreddit }} · {{ f.value }}
+          <button class="text-red-500" @click="settings.removeBlock('flair', f.value, f.subreddit)">×</button>
         </span>
       </div>
     </section>
