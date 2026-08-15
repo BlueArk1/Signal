@@ -2,6 +2,7 @@ import { Router } from 'express';
 import db from '../db/schema.js';
 import { authRequired } from '../middleware/auth.js';
 import { getSubredditPosts } from '../services/redditService.js';
+import { isValidSubreddit } from '../utils/validate.js';
 
 const router = Router();
 router.use(authRequired);
@@ -103,8 +104,9 @@ router.post('/blocks', async (req, res) => {
   let sub = null;
   if (type === 'flair') {
     sub = (subreddit || '').trim().toLowerCase();
-    if (!sub) return res.status(400).json({ error: 'Subreddit required for flair block' });
-    if (sub.length > 100) return res.status(400).json({ error: 'Subreddit too long' });
+    if (!isValidSubreddit(sub)) {
+      return res.status(400).json({ error: 'Invalid subreddit' });
+    }
     const valid = await flairExists(sub, clean);
     if (!valid) return res.status(400).json({ error: `Flair "${clean}" not found in r/${sub}` });
   }

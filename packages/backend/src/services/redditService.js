@@ -82,7 +82,9 @@ async function fetchJson(url) {
 export async function getSubredditPosts(subreddit, sort = 'hot', limit = 25, after = null) {
   const params = new URLSearchParams({ limit });
   if (after) params.set('after', after);
-  const data = await fetchJson(`${BASE}/r/${subreddit}/${sort}.json?${params}`);
+  const data = await fetchJson(
+    `${BASE}/r/${encodeURIComponent(subreddit)}/${sort}.json?${params}`
+  );
   const posts = (data?.data?.children || [])
     .filter((c) => c.kind === 't3')
     .map((c) => c.data);
@@ -114,7 +116,9 @@ function normalizeComment(comment) {
  * Fetch a single post's comments (not cached per spec).
  */
 export async function getPostComments(subreddit, postId) {
-  const data = await fetchJson(`${BASE}/r/${subreddit}/comments/${postId}.json`);
+  const data = await fetchJson(
+    `${BASE}/r/${encodeURIComponent(subreddit)}/comments/${encodeURIComponent(postId)}.json`
+  );
   const [postListing, commentListing] = data || [];
   const post = postListing?.data?.children?.[0]?.data || null;
   const comments = (commentListing?.data?.children || [])

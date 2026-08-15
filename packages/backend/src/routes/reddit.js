@@ -8,6 +8,7 @@ import {
 import { diskCacheStats } from '../services/diskCache.js';
 import { filterPosts } from '../services/filterService.js';
 import { authRequired } from '../middleware/auth.js';
+import { isValidSubreddit, isValidPostId } from '../utils/validate.js';
 
 const router = Router();
 
@@ -21,6 +22,9 @@ router.get('/cache/stats', (req, res) => {
 // GET /api/reddit/r/:subreddit?sort=hot&limit=25&after=t3_xxx
 router.get('/r/:subreddit', authRequired, redditLimiter, async (req, res) => {
   const { subreddit } = req.params;
+  if (!isValidSubreddit(subreddit)) {
+    return res.status(400).json({ error: 'Invalid subreddit' });
+  }
   const sort = SORTS.includes(req.query.sort) ? req.query.sort : 'hot';
   const limit = Math.min(parseInt(req.query.limit, 10) || 25, 100);
   const after = typeof req.query.after === 'string' ? req.query.after : null;
@@ -50,6 +54,9 @@ router.get('/search/subreddits', redditLimiter, async (req, res) => {
 // GET /api/reddit/comments/:subreddit/:postId
 router.get('/comments/:subreddit/:postId', redditLimiter, async (req, res) => {
   const { subreddit, postId } = req.params;
+  if (!isValidSubreddit(subreddit) || !isValidPostId(postId)) {
+    return res.status(400).json({ error: 'Invalid subreddit or post id' });
+  }
   try {
     const { post, comments } = await getPostComments(subreddit, postId);
     res.json({ post, comments });
