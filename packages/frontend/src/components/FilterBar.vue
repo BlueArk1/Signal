@@ -16,24 +16,5 @@ const sorts = ['hot', 'new', 'top', 'controversial'];
     >
       {{ s }}
     </button>
-
-    <div class="ml-auto flex items-center gap-1 border-l border-gray-200 dark:border-gray-700 pl-2">
-      <button
-        class="px-2 py-1.5 rounded text-sm font-medium"
-        :class="feed.thumbPosition === 'left' ? 'bg-[#0d6efd] text-white' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'"
-        title="Thumbnail on left"
-        @click="feed.setThumbPosition('left')"
-      >
-        ◀
-      </button>
-      <button
-        class="px-2 py-1.5 rounded text-sm font-medium"
-        :class="feed.thumbPosition === 'right' ? 'bg-[#0d6efd] text-white' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'"
-        title="Thumbnail on right"
-        @click="feed.setThumbPosition('right')"
-      >
-        ▶
-      </button>
-    </div>
   </div>
 </template>
