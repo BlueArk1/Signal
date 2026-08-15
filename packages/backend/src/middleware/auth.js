@@ -40,11 +40,20 @@ export function signToken(user) {
 // Verify token signature + check token_version matches current DB value.
 // Returns the verified payload or null.
 function verifyToken(token) {
-  const payload = jwt.verify(token, ACTIVE_SECRET, { algorithms: [JWT_ALGORITHM] });
-  if (typeof payload.tv !== 'number') return null;
-  const tv = getTokenVersion(payload.id);
-  if (tv === null || tv !== payload.tv) return null;
-  return payload;
+  try {
+    const payload = jwt.verify(token, ACTIVE_SECRET, { algorithms: [JWT_ALGORITHM] });
+    if (typeof payload.tv !== 'number') {
+      console.log('[auth] verify: tv not a number', payload.tv);
+      return null;
+    }
+    const tv = getTokenVersion(payload.id);
+    console.log('[auth] verify: payload.tv=', payload.tv, 'db.tv=', tv, 'id=', payload.id);
+    if (tv === null || tv !== payload.tv) return null;
+    return payload;
+  } catch (e) {
+    console.log('[auth] verify ERROR:', e.message);
+    return null;
+  }
 }
 
 export function authRequired(req, res, next) {
