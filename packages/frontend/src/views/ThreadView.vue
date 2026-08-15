@@ -44,13 +44,13 @@ async function toggleSave() {
   <div>
     <p v-if="error" class="bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300 border border-red-300 dark:border-red-700 rounded p-3 mb-3 text-sm">{{ error }}</p>
 
-    <div v-if="loading" class="bg-white dark:bg-[#1e1e1e] rounded border border-gray-300 dark:border-[#3a3a3a] p-4 animate-pulse">
+    <div v-if="loading" class="bg-white dark:bg-[#1e1e1e] rounded-lg shadow-sm p-4 animate-pulse">
       <div class="h-4 bg-gray-200 dark:bg-gray-700 rounded w-2/3 mb-2"></div>
       <div class="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/3"></div>
     </div>
 
     <template v-else-if="post">
-      <article class="bg-white dark:bg-[#1e1e1e] rounded border border-gray-300 dark:border-[#3a3a3a] p-4 mb-4">
+      <article class="bg-white dark:bg-[#1e1e1e] rounded-lg shadow-sm p-4 mb-4">
         <div class="flex items-center gap-1 text-xs text-gray-500">
           <span
             v-if="post.stickied"
@@ -87,7 +87,7 @@ async function toggleSave() {
         </div>
       </article>
 
-      <div class="bg-white dark:bg-[#1e1e1e] rounded border border-gray-300 dark:border-[#3a3a3a] p-4">
+      <div class="bg-white dark:bg-[#1e1e1e] rounded-lg shadow-sm p-4">
         <h2 class="font-semibold mb-3">Comments</h2>
         <div v-if="loading" class="space-y-3">
           <div v-for="i in 3" :key="i" class="animate-pulse">

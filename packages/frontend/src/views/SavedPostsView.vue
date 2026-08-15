@@ -40,7 +40,7 @@ async function unsave(postId) {
       class="w-full border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-sm mb-4 bg-white dark:bg-gray-800 dark:text-gray-100"
     />
 
-    <div v-if="!postStore.saved.length" class="bg-white dark:bg-[#1e1e1e] rounded border border-gray-300 dark:border-[#3a3a3a] p-8 text-center text-gray-500 dark:text-gray-400">
+    <div v-if="!postStore.saved.length" class="bg-white dark:bg-[#1e1e1e] rounded-lg shadow-sm p-8 text-center text-gray-500 dark:text-gray-400">
       No saved posts yet. Save posts from your feed to see them here.
     </div>
 
@@ -48,7 +48,7 @@ async function unsave(postId) {
       <article
         v-for="p in filtered"
         :key="p.post_id"
-        class="bg-white dark:bg-[#1e1e1e] rounded border border-gray-300 dark:border-[#3a3a3a] p-4"
+        class="bg-white dark:bg-[#1e1e1e] rounded-lg shadow-sm p-4"
       >
         <div class="text-xs text-gray-500 mb-1">
           <router-link :to="`/r/${p.subreddit}`" class="font-semibold text-gray-700 dark:text-gray-300 hover:underline">
