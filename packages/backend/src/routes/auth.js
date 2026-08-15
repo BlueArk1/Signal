@@ -66,9 +66,19 @@ router.post('/register', authLimiter, async (req, res) => {
   }
 
   const hash = await bcrypt.hash(password, 10);
-  const info = db
-    .prepare('INSERT INTO users (username, password_hash) VALUES (?, ?)')
-    .run(clean, hash);
+  let info;
+  try {
+    info = db
+      .prepare('INSERT INTO users (username, password_hash) VALUES (?, ?)')
+      .run(clean, hash);
+  } catch (err) {
+    // Concurrent identical usernames can violate the UNIQUE constraint even
+    // though the pre-check passed — treat as a conflict, not a 500.
+    if (String(err?.message || '').includes('UNIQUE')) {
+      return res.status(409).json({ error: 'Username already taken' });
+    }
+    throw err;
+  }
   // node:sqlite may return lastInsertRowid as BigInt — coerce to Number so
   // jwt.sign/JSON.stringify don't throw on BigInt serialization.
   const user = { id: Number(info.lastInsertRowid), username: clean, token_version: 0 };
