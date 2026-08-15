@@ -69,7 +69,9 @@ router.post('/register', authLimiter, async (req, res) => {
   const info = db
     .prepare('INSERT INTO users (username, password_hash) VALUES (?, ?)')
     .run(clean, hash);
-  const user = { id: info.lastInsertRowid, username: clean, token_version: 0 };
+  // node:sqlite may return lastInsertRowid as BigInt — coerce to Number so
+  // jwt.sign/JSON.stringify don't throw on BigInt serialization.
+  const user = { id: Number(info.lastInsertRowid), username: clean, token_version: 0 };
   res.status(201).json({ token: signToken(user), user });
 });
 
