@@ -77,7 +77,6 @@ if (!blockCols.some((c) => c.name === 'subreddit')) {
 // Seed a default user only if NO users exist at all.
 // Generate a random password and print it to the console.
 const DEFAULT_USER = process.env.DEFAULT_USERNAME || 'Ark';
-const isProd = process.env.NODE_ENV === 'production';
 const userCount = db.prepare('SELECT COUNT(*) AS c FROM users').get().c;
 if (userCount === 0) {
   const password = process.env.DEFAULT_PASSWORD || crypto.randomBytes(16).toString('hex');
@@ -89,11 +88,7 @@ if (userCount === 0) {
   console.log('==============================================');
   console.log(`[db] Seeded initial user "${DEFAULT_USER}"`);
   console.log(`[db] Username: ${DEFAULT_USER}`);
-  // Never print the plaintext password in production — only in dev where a
-  // random password is generated and must be surfaced to the operator.
-  if (!isProd) {
-    console.log(`[db] Password: ${password}`);
-  }
+  console.log(`[db] Password: ${password}`);
   console.log('[db] Change this password after first login!');
   console.log('==============================================');
 }
