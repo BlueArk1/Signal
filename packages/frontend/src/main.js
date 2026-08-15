@@ -11,7 +11,11 @@ app.use(router);
 
 // Restore the session from the httpOnly cookie before mounting so the
 // router guard sees the correct auth state on first navigation.
-const auth = useAuthStore();
-auth.restore().finally(() => {
+async function init() {
+  const auth = useAuthStore();
+  await auth.restore();
+  await router.isReady();
   app.mount('#app');
-});
+}
+
+init();
