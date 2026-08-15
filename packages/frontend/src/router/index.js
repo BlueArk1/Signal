@@ -16,16 +16,20 @@ const router = createRouter({
   routes,
 });
 
-// Require authentication for all routes except public ones (login)
-router.beforeEach((to) => {
+// Require authentication for all routes except public ones (login).
+// The guard awaits restorePromise so the initial navigation doesn't redirect
+// to /login while the cookie session check is still in flight.
+router.beforeEach(async (to) => {
   const auth = useAuthStore();
+  if (!auth.restored) {
+    await auth.restorePromise;
+  }
   if (!to.meta.public && !auth.isAuthenticated) {
     return { name: 'login' };
   }
   if (to.name === 'login' && auth.isAuthenticated) {
     return { name: 'home' };
   }
-  // Force a password change before allowing access to anything else
   if (auth.isAuthenticated && auth.mustChangePassword && to.name !== 'settings') {
     return { name: 'settings' };
   }

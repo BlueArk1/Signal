@@ -9,13 +9,9 @@ const app = createApp(App);
 app.use(createPinia());
 app.use(router);
 
-// Restore the session from the httpOnly cookie before mounting so the
-// router guard sees the correct auth state on first navigation.
-async function init() {
-  const auth = useAuthStore();
-  await auth.restore();
-  await router.isReady();
-  app.mount('#app');
-}
+// Kick off session restore. The router guard awaits restorePromise before
+// making auth decisions, so the app can mount immediately.
+const auth = useAuthStore();
+auth.restore();
 
-init();
+app.mount('#app');

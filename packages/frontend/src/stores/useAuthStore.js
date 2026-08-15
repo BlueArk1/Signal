@@ -6,9 +6,15 @@ export const useAuthStore = defineStore('auth', () => {
   const user = ref(null);
   const loading = ref(false);
   const error = ref('');
+  const restored = ref(false);
 
   const isAuthenticated = computed(() => !!user.value);
   const mustChangePassword = computed(() => !!user.value?.mustChangePassword);
+
+  // Restore promise — the router guard awaits this before checking auth so
+  // it doesn't redirect to /login while the cookie check is still in flight.
+  let _restoreResolve;
+  const restorePromise = new Promise((r) => { _restoreResolve = r; });
 
   // Restore the session from the httpOnly cookie on app load.
   // If the cookie is stale (401), clear it so it doesn't keep failing.
@@ -18,10 +24,12 @@ export const useAuthStore = defineStore('auth', () => {
       user.value = data.user;
     } catch (e) {
       user.value = null;
-      // Clear the stale cookie so future requests don't keep 401ing
       if (e.status === 401) {
         try { await api.post('/auth/logout'); } catch { /* ignore */ }
       }
+    } finally {
+      restored.value = true;
+      _restoreResolve();
     }
   }
 
@@ -84,6 +92,8 @@ export const useAuthStore = defineStore('auth', () => {
     user,
     loading,
     error,
+    restored,
+    restorePromise,
     isAuthenticated,
     mustChangePassword,
     restore,
