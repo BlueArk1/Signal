@@ -5,12 +5,15 @@ import PostCard from '../components/PostCard.vue';
 import { useFeedStore } from '../stores/useFeedStore.js';
 import { useSettingsStore } from '../stores/useSettingsStore.js';
 import { useAuthStore } from '../stores/useAuthStore.js';
+import { useInfiniteScroll } from '../composables/useInfiniteScroll.js';
 
 const props = defineProps({ subreddit: { type: String, required: true } });
 
 const feed = useFeedStore();
 const settings = useSettingsStore();
 const auth = useAuthStore();
+
+useInfiniteScroll(() => feed.loadMore());
 
 const subscribed = computed(() => settings.subscriptions.includes(props.subreddit.toLowerCase()));
 
@@ -48,7 +51,6 @@ async function toggleSubscribe() {
     </div>
 
     <FilterBar />
-    <p v-if="feed.fromCache" class="text-xs text-gray-400 mb-2">Served from cache</p>
     <p v-if="feed.error" class="bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300 border border-red-300 dark:border-red-700 rounded p-3 mb-3 text-sm">
       {{ feed.error }}
     </p>
@@ -67,6 +69,8 @@ async function toggleSubscribe() {
 
     <div v-else class="space-y-3">
       <PostCard v-for="post in feed.posts" :key="post.id" :post="post" />
+      <div v-if="feed.loadingMore" class="text-center text-xs text-gray-400 py-2">Loading more…</div>
+      <p v-else-if="!feed.hasMore" class="text-center text-xs text-gray-400 py-2">You're all caught up</p>
     </div>
   </div>
 </template>

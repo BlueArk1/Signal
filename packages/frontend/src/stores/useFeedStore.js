@@ -6,28 +6,47 @@ export const useFeedStore = defineStore('feed', () => {
   const posts = ref([]);
   const sort = ref('hot');
   const loading = ref(false);
+  const loadingMore = ref(false);
   const error = ref('');
-  const fromCache = ref(false);
-  // Only shuffle once per page load (resets on F5); keeps order during navigation
-  let shuffled = false;
-  // Track what the home feed was built from, to avoid refetching on back-nav
+  const hasMore = ref(false);
+
+  // Server-side pagination cursors (Reddit 'after' tokens)
+  let cursors = {}; // subreddit -> after token
+  let currentSub = null; // single-subreddit mode
+  let currentSubs = null; // home feed mode (list of subs)
   let lastHomeSort = null;
   let lastHomeSubs = null;
+  let shuffled = false;
+
+  const PAGE_SIZE = 25;
+
+  function resetState() {
+    posts.value = [];
+    cursors = {};
+    currentSub = null;
+    currentSubs = null;
+    hasMore.value = false;
+  }
 
   async function fetchSubreddit(subreddit, opts = {}) {
+    const s = opts.sort || sort.value;
     loading.value = true;
     error.value = '';
     try {
       const data = await api.get(
-        `/reddit/r/${subreddit}?sort=${opts.sort || sort.value}&limit=${opts.limit || 25}`
+        `/reddit/r/${subreddit}?sort=${s}&limit=${opts.limit || PAGE_SIZE}`
       );
       posts.value = data.posts;
-      fromCache.value = data.fromCache;
+      cursors = { [subreddit]: data.after };
+      currentSub = subreddit;
+      currentSubs = null;
+      hasMore.value = !!data.after;
       if (opts.sort) sort.value = opts.sort;
       return data;
     } catch (e) {
       error.value = e.message;
       posts.value = [];
+      hasMore.value = false;
       return null;
     } finally {
       loading.value = false;
@@ -36,8 +55,7 @@ export const useFeedStore = defineStore('feed', () => {
 
   async function fetchHome(subreddits) {
     const list = subreddits && subreddits.length ? subreddits : [];
-    // If nothing changed since last build (same sort + same subs), keep current
-    // posts/order — e.g. when navigating back from a thread.
+    // Keep current posts/order on back-nav if nothing changed
     if (
       lastHomeSort === sort.value &&
       lastHomeSubs &&
@@ -50,26 +68,30 @@ export const useFeedStore = defineStore('feed', () => {
     loading.value = true;
     error.value = '';
     try {
-      // Only show followed subreddits — no popular fallback
       if (!list.length) {
-        posts.value = [];
-        fromCache.value = false;
+        resetState();
         lastHomeSort = sort.value;
         lastHomeSubs = [];
         return [];
       }
       const results = await Promise.all(
         list.map((sub) =>
-          api.get(`/reddit/r/${sub}?sort=${sort.value}&limit=10`).catch(() => null)
+          api.get(`/reddit/r/${sub}?sort=${sort.value}&limit=${PAGE_SIZE}`).catch(() => null)
         )
       );
       const merged = results
         .filter(Boolean)
         .flatMap((r) => r.posts)
-        // Exclude pinned (stickied) threads from the home feed
         .filter((p) => !p.stickied);
-      // Jumble the feed once per page load — no vote-count sorting.
-      // On subsequent loads (sort/subscription changes) keep the existing order.
+      // Track cursor per sub for "load more"
+      cursors = {};
+      results.filter(Boolean).forEach((r, i) => {
+        cursors[list[i]] = r.after;
+      });
+      currentSubs = [...list];
+      currentSub = null;
+      hasMore.value = results.some((r) => r?.after);
+
       if (!shuffled) {
         for (let i = merged.length - 1; i > 0; i--) {
           const j = Math.floor(Math.random() * (i + 1));
@@ -78,16 +100,56 @@ export const useFeedStore = defineStore('feed', () => {
         shuffled = true;
       }
       posts.value = merged;
-      fromCache.value = results.some((r) => r?.fromCache);
       lastHomeSort = sort.value;
       lastHomeSubs = [...list];
       return merged;
     } catch (e) {
       error.value = e.message;
       posts.value = [];
+      hasMore.value = false;
       return [];
     } finally {
       loading.value = false;
+    }
+  }
+
+  // Load the next page. Single-sub mode: one request. Home mode: fetch the
+  // next page from each sub and merge.
+  async function loadMore() {
+    if (loading.value || loadingMore.value || !hasMore.value) return;
+    loadingMore.value = true;
+    try {
+      if (currentSub) {
+        const data = await api.get(
+          `/reddit/r/${currentSub}?sort=${sort.value}&limit=${PAGE_SIZE}&after=${encodeURIComponent(cursors[currentSub] || '')}`
+        );
+        posts.value = [...posts.value, ...data.posts];
+        cursors[currentSub] = data.after;
+        hasMore.value = !!data.after;
+      } else if (currentSubs && currentSubs.length) {
+        const results = await Promise.all(
+          currentSubs.map((sub) =>
+            api
+              .get(
+                `/reddit/r/${sub}?sort=${sort.value}&limit=${PAGE_SIZE}&after=${encodeURIComponent(cursors[sub] || '')}`
+              )
+              .catch(() => null)
+          )
+        );
+        const merged = results
+          .filter(Boolean)
+          .flatMap((r) => r.posts)
+          .filter((p) => !p.stickied);
+        results.filter(Boolean).forEach((r, i) => {
+          cursors[currentSubs[i]] = r.after;
+        });
+        hasMore.value = results.some((r) => r?.after);
+        posts.value = [...posts.value, ...merged];
+      }
+    } catch (e) {
+      error.value = e.message;
+    } finally {
+      loadingMore.value = false;
     }
   }
 
@@ -106,10 +168,12 @@ export const useFeedStore = defineStore('feed', () => {
     posts,
     sort,
     loading,
+    loadingMore,
     error,
-    fromCache,
+    hasMore,
     fetchSubreddit,
     fetchHome,
+    loadMore,
     setSort,
     resetShuffle,
   };

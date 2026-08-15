@@ -1,13 +1,11 @@
 import rateLimit from 'express-rate-limit';
 import crypto from 'node:crypto';
-import { diskCacheGet, diskCacheSet } from './diskCache.js';
 
 // Redlib-style OAuth spoofing: impersonate the official Android app's
 // anonymous installed_client flow. No username/password needed.
 const ANDROID_CLIENT_ID = 'ohXpoqrZYub1kg';
 const AUTH_ENDPOINT = 'https://www.reddit.com';
 const BASE = 'https://oauth.reddit.com';
-const CACHE_TTL_MS = 12 * 60 * 60 * 1000; // 12 hours
 
 const USER_AGENT =
   process.env.REDDIT_USER_AGENT ||
@@ -81,17 +79,14 @@ async function fetchJson(url) {
  * @param {number} limit
  * @returns {{ fromCache: boolean, posts: Array }}
  */
-export async function getSubredditPosts(subreddit, sort = 'hot', limit = 25) {
-  const key = `listing:${subreddit}:${sort}:${limit}`;
-  const cached = diskCacheGet(key);
-  if (cached) return { fromCache: true, posts: cached };
-
-  const data = await fetchJson(`${BASE}/r/${subreddit}/${sort}.json?limit=${limit}`);
+export async function getSubredditPosts(subreddit, sort = 'hot', limit = 25, after = null) {
+  const params = new URLSearchParams({ limit });
+  if (after) params.set('after', after);
+  const data = await fetchJson(`${BASE}/r/${subreddit}/${sort}.json?${params}`);
   const posts = (data?.data?.children || [])
     .filter((c) => c.kind === 't3')
     .map((c) => c.data);
-  diskCacheSet(key, posts, CACHE_TTL_MS);
-  return { fromCache: false, posts };
+  return { posts, after: data?.data?.after || null };
 }
 
 /**

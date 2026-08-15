@@ -1,3 +1,5 @@
+import { useToastStore } from '../stores/useToastStore.js';
+
 const TOKEN_KEY = 'signal_token';
 
 export function getToken() {
@@ -7,6 +9,16 @@ export function getToken() {
 export function setToken(token) {
   if (token) localStorage.setItem(TOKEN_KEY, token);
   else localStorage.removeItem(TOKEN_KEY);
+}
+
+// Show a toast when Reddit rate-limits us (429). 2s timer.
+function notifyRateLimited() {
+  try {
+    const toast = useToastStore();
+    toast.push('Rate limited by Reddit — slow down', 'error', 2000);
+  } catch {
+    // ignore
+  }
 }
 
 async function request(path, options = {}) {
@@ -31,6 +43,10 @@ async function request(path, options = {}) {
     // On 401, clear the expired token (session ended)
     if (res.status === 401) {
       setToken(null);
+    }
+    // On 429 (rate limited by Reddit), notify the user
+    if (res.status === 429) {
+      notifyRateLimited();
     }
     const err = new Error(data?.error || `Request failed (${res.status})`);
     err.status = res.status;

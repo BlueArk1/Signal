@@ -18,20 +18,17 @@ router.get('/cache/stats', (req, res) => {
   res.json(diskCacheStats());
 });
 
-// GET /api/reddit/r/:subreddit?sort=hot&limit=25
+// GET /api/reddit/r/:subreddit?sort=hot&limit=25&after=t3_xxx
 router.get('/r/:subreddit', authRequired, redditLimiter, async (req, res) => {
   const { subreddit } = req.params;
   const sort = SORTS.includes(req.query.sort) ? req.query.sort : 'hot';
   const limit = Math.min(parseInt(req.query.limit, 10) || 25, 100);
+  const after = typeof req.query.after === 'string' ? req.query.after : null;
 
   try {
-    const { fromCache, posts } = await getSubredditPosts(subreddit, sort, limit);
+    const { posts, after: nextAfter } = await getSubredditPosts(subreddit, sort, limit, after);
     const filtered = filterPosts(posts, req.user.id);
-    // Cache listing responses when served from the disk cache
-    if (fromCache) {
-      res.setHeader('Cache-Control', 'public, max-age=300');
-    }
-    res.json({ fromCache, subreddit, sort, posts: filtered });
+    res.json({ subreddit, sort, posts: filtered, after: nextAfter });
   } catch (err) {
     const status = err.status || 502;
     res.status(status).json({ error: err.message || 'Failed to fetch subreddit' });
