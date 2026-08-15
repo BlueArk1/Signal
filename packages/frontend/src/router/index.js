@@ -30,6 +30,10 @@ router.beforeEach((to) => {
   if (to.name === 'login' && auth.isAuthenticated) {
     return { name: 'home' };
   }
+  // Force a password change before allowing access to anything else
+  if (auth.isAuthenticated && auth.mustChangePassword && to.name !== 'settings') {
+    return { name: 'settings' };
+  }
 });
 
 // Set per-route document title

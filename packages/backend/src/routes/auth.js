@@ -91,7 +91,7 @@ router.post('/login', authLimiter, async (req, res) => {
     return res.status(400).json({ error: 'Username and password required' });
   }
   const user = db
-    .prepare('SELECT id, username, password_hash, token_version FROM users WHERE username = ?')
+    .prepare('SELECT id, username, password_hash, token_version, must_change_password FROM users WHERE username = ?')
     .get(username.trim());
   // Always run bcrypt compare (even for missing users) to avoid timing-based
   // user enumeration. Compare against a dummy hash when user not found.
@@ -100,7 +100,12 @@ router.post('/login', authLimiter, async (req, res) => {
   if (!user || !ok) {
     return res.status(401).json({ error: 'Invalid credentials' });
   }
-  const payload = { id: user.id, username: user.username, token_version: user.token_version };
+  const payload = {
+    id: user.id,
+    username: user.username,
+    token_version: user.token_version,
+    mustChangePassword: !!user.must_change_password,
+  };
   res.json({ token: signToken(payload), user: payload });
 });
 
@@ -124,9 +129,11 @@ router.post('/change-password', authLimiter, authRequired, async (req, res) => {
     return res.status(401).json({ error: 'Current password is incorrect' });
   }
   const hash = await bcrypt.hash(newPassword, 10);
-  // Bump token_version to invalidate all previously issued JWTs for this user.
-  db.prepare('UPDATE users SET password_hash = ?, token_version = token_version + 1 WHERE id = ?')
-    .run(hash, req.user.id);
+  // Bump token_version to invalidate all previously issued JWTs for this user,
+  // and clear the must-change-password flag.
+  db.prepare(
+    'UPDATE users SET password_hash = ?, token_version = token_version + 1, must_change_password = 0 WHERE id = ?'
+  ).run(hash, req.user.id);
   res.json({ ok: true });
 });
 

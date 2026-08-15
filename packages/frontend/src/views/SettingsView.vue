@@ -1,5 +1,6 @@
 <script setup>
 import { ref, onMounted } from 'vue';
+import { useRouter } from 'vue-router';
 import { useSettingsStore } from '../stores/useSettingsStore.js';
 import { useAuthStore } from '../stores/useAuthStore.js';
 import { useToastStore } from '../stores/useToastStore.js';
@@ -7,6 +8,7 @@ import { useToastStore } from '../stores/useToastStore.js';
 const settings = useSettingsStore();
 const auth = useAuthStore();
 const toast = useToastStore();
+const router = useRouter();
 
 const newSub = ref('');
 const newKeyword = ref('');
@@ -49,6 +51,10 @@ async function submitPassword() {
     pwSuccess.value = 'Password updated';
     toast.push('Password updated');
     pwForm.value = { currentPassword: '', newPassword: '' };
+    // If this was a forced change, allow navigation away now
+    if (!auth.mustChangePassword) {
+      router.push('/');
+    }
   } else {
     pwError.value = auth.error;
     toast.push(auth.error, 'error');
@@ -63,6 +69,11 @@ async function submitPassword() {
     <p v-if="!auth.isAuthenticated" class="bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200 border border-yellow-300 dark:border-yellow-700 rounded p-3 text-sm">
       Log in to manage subscriptions and blocked content.
     </p>
+
+    <!-- Forced password change banner -->
+    <div v-if="auth.isAuthenticated && auth.mustChangePassword" class="bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200 border border-red-300 dark:border-red-700 rounded p-3 text-sm">
+      You must change your password before continuing.
+    </div>
 
     <!-- Change password -->
     <section v-if="auth.isAuthenticated" class="bg-white dark:bg-[#1e1e1e] rounded-lg shadow-sm p-4">

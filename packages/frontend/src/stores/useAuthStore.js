@@ -21,6 +21,7 @@ export const useAuthStore = defineStore('auth', () => {
   const error = ref('');
 
   const isAuthenticated = computed(() => !!token.value);
+  const mustChangePassword = computed(() => !!user.value?.mustChangePassword);
 
   async function login(username, password) {
     loading.value = true;
@@ -67,6 +68,8 @@ export const useAuthStore = defineStore('auth', () => {
     error.value = '';
     try {
       await api.post('/auth/change-password', { currentPassword, newPassword });
+      // Clear the forced-change flag locally after a successful change
+      if (user.value) user.value.mustChangePassword = false;
       return true;
     } catch (e) {
       error.value = e.message;
@@ -82,6 +85,7 @@ export const useAuthStore = defineStore('auth', () => {
     loading,
     error,
     isAuthenticated,
+    mustChangePassword,
     login,
     register,
     logout,

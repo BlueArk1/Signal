@@ -20,6 +20,7 @@ db.exec(`
     username TEXT NOT NULL UNIQUE,
     password_hash TEXT NOT NULL,
     token_version INTEGER NOT NULL DEFAULT 0,
+    must_change_password INTEGER NOT NULL DEFAULT 0,
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
   );
 
@@ -76,17 +77,31 @@ if (!blockCols.some((c) => c.name === 'subreddit')) {
 // Seed a default user only if NO users exist at all.
 // Generate a random password and print it to the console.
 const DEFAULT_USER = process.env.DEFAULT_USERNAME || 'Ark';
+const isProd = process.env.NODE_ENV === 'production';
 const userCount = db.prepare('SELECT COUNT(*) AS c FROM users').get().c;
 if (userCount === 0) {
   const password = process.env.DEFAULT_PASSWORD || crypto.randomBytes(16).toString('hex');
   const hash = bcrypt.hashSync(password, 10);
-  db.prepare('INSERT INTO users (username, password_hash) VALUES (?, ?)').run(DEFAULT_USER, hash);
+  // Force the seeded user to change their password on first login.
+  db.prepare(
+    'INSERT INTO users (username, password_hash, must_change_password) VALUES (?, ?, 1)'
+  ).run(DEFAULT_USER, hash);
   console.log('==============================================');
   console.log(`[db] Seeded initial user "${DEFAULT_USER}"`);
   console.log(`[db] Username: ${DEFAULT_USER}`);
-  console.log(`[db] Password: ${password}`);
+  // Never print the plaintext password in production — only in dev where a
+  // random password is generated and must be surfaced to the operator.
+  if (!isProd) {
+    console.log(`[db] Password: ${password}`);
+  }
   console.log('[db] Change this password after first login!');
   console.log('==============================================');
+}
+
+// Migration: add must_change_password column to existing DBs
+const userCols = db.prepare('PRAGMA table_info(users)').all();
+if (!userCols.some((c) => c.name === 'must_change_password')) {
+  db.exec('ALTER TABLE users ADD COLUMN must_change_password INTEGER NOT NULL DEFAULT 0');
 }
 
 // Remove the test user if present
