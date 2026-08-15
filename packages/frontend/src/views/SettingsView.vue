@@ -48,13 +48,13 @@ async function submitPassword() {
   pwSuccess.value = '';
   const ok = await auth.changePassword(pwForm.value.currentPassword, pwForm.value.newPassword);
   if (ok) {
-    pwSuccess.value = 'Password updated';
     toast.push('Password updated');
-    pwForm.value = { currentPassword: '', newPassword: '' };
-    // If this was a forced change, allow navigation away now
-    if (!auth.mustChangePassword) {
-      router.push('/');
-    }
+    // Hard reload so the browser picks up the new cookie cleanly.
+    // The change-password response sets a fresh httpOnly cookie with the
+    // new token_version — a full reload ensures all subsequent requests
+    // use it instead of racing with stale cookies.
+    window.location.href = '/';
+    return;
   } else {
     pwError.value = auth.error;
     toast.push(auth.error, 'error');

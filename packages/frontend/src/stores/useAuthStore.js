@@ -10,13 +10,18 @@ export const useAuthStore = defineStore('auth', () => {
   const isAuthenticated = computed(() => !!user.value);
   const mustChangePassword = computed(() => !!user.value?.mustChangePassword);
 
-  // Restore the session from the httpOnly cookie on app load
+  // Restore the session from the httpOnly cookie on app load.
+  // If the cookie is stale (401), clear it so it doesn't keep failing.
   async function restore() {
     try {
       const data = await api.get('/auth/me');
       user.value = data.user;
-    } catch {
+    } catch (e) {
       user.value = null;
+      // Clear the stale cookie so future requests don't keep 401ing
+      if (e.status === 401) {
+        try { await api.post('/auth/logout'); } catch { /* ignore */ }
+      }
     }
   }
 

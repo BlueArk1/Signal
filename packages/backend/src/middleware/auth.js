@@ -52,24 +52,16 @@ export function authRequired(req, res, next) {
   const header = req.headers.authorization || '';
   const bearer = header.startsWith('Bearer ') ? header.slice(7) : null;
   const token = bearer || req.cookies?.signal_token || null;
-  // DEBUG — remove after diagnosis
-  console.log('[auth]', req.method, req.originalUrl,
-    'hasCookies:', !!req.cookies,
-    'cookieKeys:', Object.keys(req.cookies || {}),
-    'hasToken:', !!token,
-    'bearer:', !!bearer);
   if (!token) {
     return res.status(401).json({ error: 'Authentication required' });
   }
   try {
     req.user = verifyToken(token);
     if (!req.user) {
-      console.log('[auth] verifyToken returned null for', req.originalUrl);
       return res.status(401).json({ error: 'Invalid or expired token' });
     }
     next();
-  } catch (err) {
-    console.log('[auth] verifyToken threw:', err.message, 'for', req.originalUrl);
+  } catch {
     return res.status(401).json({ error: 'Invalid or expired token' });
   }
 }
