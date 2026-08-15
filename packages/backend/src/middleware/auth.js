@@ -51,7 +51,7 @@ export function authRequired(req, res, next) {
   // Accept token from Authorization header (legacy) or httpOnly cookie
   const header = req.headers.authorization || '';
   const bearer = header.startsWith('Bearer ') ? header.slice(7) : null;
-  const token = bearer || req.cookies?.token || null;
+  const token = bearer || req.cookies?.signal_token || null;
   if (!token) {
     return res.status(401).json({ error: 'Authentication required' });
   }
