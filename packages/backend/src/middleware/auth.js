@@ -52,6 +52,9 @@ export function authRequired(req, res, next) {
   const header = req.headers.authorization || '';
   const bearer = header.startsWith('Bearer ') ? header.slice(7) : null;
   const token = bearer || req.cookies?.signal_token || null;
+  // TEMP DIAGNOSTIC
+  console.log('[auth] cookies:', JSON.stringify(req.cookies));
+  console.log('[auth] hasToken:', !!token, 'bearer:', !!bearer);
   if (!token) {
     return res.status(401).json({ error: 'Authentication required' });
   }
