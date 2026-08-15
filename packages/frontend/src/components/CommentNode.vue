@@ -28,8 +28,9 @@ const atDepthLimit = computed(() => props.depth >= MAX_DEPTH);
 <template>
   <div class="py-3" :class="collapsed ? 'pb-4' : ''">
     <!-- Header row (click to collapse/expand) -->
-    <div
-      class="flex items-center gap-2 text-xs text-gray-500 cursor-pointer select-none"
+    <button
+      class="flex items-center gap-2 text-xs text-gray-500 cursor-pointer select-none w-full text-left"
+      :aria-expanded="!collapsed"
       @click="collapsed = !collapsed"
     >
       <span class="text-gray-400 dark:text-gray-500 w-3 shrink-0">{{ collapsed ? '▸' : '▾' }}</span>
@@ -37,7 +38,7 @@ const atDepthLimit = computed(() => props.depth >= MAX_DEPTH);
       <span class="text-gray-300 dark:text-gray-600">·</span>
       <span>{{ timeAgo(comment.created_utc) }}</span>
       <span v-if="comment.score !== undefined" class="ml-1">{{ comment.score?.toLocaleString() }} points</span>
-    </div>
+    </button>
 
     <!-- Body -->
     <p
@@ -60,7 +61,7 @@ const atDepthLimit = computed(() => props.depth >= MAX_DEPTH);
         <a
           :href="`https://www.reddit.com${comment.permalink || ''}`"
           target="_blank"
-          rel="noopener"
+          rel="noopener noreferrer"
           class="text-[#0d6efd] hover:underline"
         >
           Continue thread on Reddit ({{ replies.length }} more replies)

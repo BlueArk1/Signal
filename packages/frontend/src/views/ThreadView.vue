@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, watch } from 'vue';
 import { api } from '../api/client.js';
 import CommentNode from '../components/CommentNode.vue';
 import PostCard from '../components/PostCard.vue';
@@ -26,6 +26,8 @@ async function load() {
 }
 
 onMounted(load);
+// Reload when navigating between threads (same component, different params)
+watch(() => [props.subreddit, props.postId], load);
 </script>
 
 <template>

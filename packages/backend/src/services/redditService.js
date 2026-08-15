@@ -15,6 +15,10 @@ const USER_AGENT =
 let accessToken = null;
 let tokenExpiresAt = 0;
 let deviceId = null;
+// Dedup concurrent token refreshes (thundering herd)
+let pendingToken = null;
+
+const FETCH_TIMEOUT_MS = 15000;
 
 function getDeviceId() {
   if (!deviceId) {
@@ -24,16 +28,24 @@ function getDeviceId() {
   return deviceId;
 }
 
-async function getAccessToken() {
-  if (accessToken && Date.now() < tokenExpiresAt) return accessToken;
+async function fetchWithTimeout(url, options = {}) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+  try {
+    return await fetch(url, { ...options, signal: controller.signal });
+  } finally {
+    clearTimeout(timer);
+  }
+}
 
+async function refreshAccessToken() {
   const basic = Buffer.from(`${ANDROID_CLIENT_ID}:`).toString('base64');
   const body = new URLSearchParams({
     grant_type: 'https://oauth.reddit.com/grants/installed_client',
     device_id: getDeviceId(),
   });
 
-  const res = await fetch(`${AUTH_ENDPOINT}/api/v1/access_token`, {
+  const res = await fetchWithTimeout(`${AUTH_ENDPOINT}/api/v1/access_token`, {
     method: 'POST',
     headers: {
       'User-Agent': USER_AGENT,
@@ -51,14 +63,26 @@ async function getAccessToken() {
 
   const data = await res.json();
   accessToken = data.access_token;
-  // Refresh 60s before expiry (tokens last ~1h; Redlib refreshes every 24h)
-  tokenExpiresAt = Date.now() + (data.expires_in - 60) * 1000;
+  // Guard against missing expires_in (would produce NaN and refetch every call)
+  const expiresIn = Number(data.expires_in);
+  tokenExpiresAt = Date.now() + (Number.isFinite(expiresIn) ? expiresIn - 60 : 3600) * 1000;
   return accessToken;
+}
+
+async function getAccessToken() {
+  if (accessToken && Date.now() < tokenExpiresAt) return accessToken;
+  // Dedup concurrent refreshes so N parallel requests share one token fetch
+  if (!pendingToken) {
+    pendingToken = refreshAccessToken().finally(() => {
+      pendingToken = null;
+    });
+  }
+  return pendingToken;
 }
 
 async function fetchJson(url) {
   const token = await getAccessToken();
-  const res = await fetch(url, {
+  const res = await fetchWithTimeout(url, {
     headers: {
       'User-Agent': USER_AGENT,
       Authorization: `Bearer ${token}`,
@@ -93,21 +117,26 @@ export async function getSubredditPosts(subreddit, sort = 'hot', limit = 25, aft
 
 /**
  * Recursively normalize a Reddit comment into a flat structure where
- * `replies` is a plain array of comment objects.
+ * `replies` is a plain array of comment objects. Depth-capped to avoid
+ * stack overflow on very deep threads.
  */
-function normalizeComment(comment) {
+const MAX_COMMENT_DEPTH = 20;
+
+function normalizeComment(comment, depth = 0) {
   const data = comment?.data || comment;
   let replies = [];
-  const rawReplies = data.replies;
-  if (rawReplies && typeof rawReplies === 'object') {
-    const children = rawReplies.data?.children || [];
-    replies = children
-      .filter((c) => c.kind === 't1')
-      .map((c) => normalizeComment(c));
-  } else if (Array.isArray(rawReplies)) {
-    replies = rawReplies
-      .filter((c) => c.kind === 't1')
-      .map((c) => normalizeComment(c));
+  if (depth < MAX_COMMENT_DEPTH) {
+    const rawReplies = data.replies;
+    if (rawReplies && typeof rawReplies === 'object') {
+      const children = rawReplies.data?.children || [];
+      replies = children
+        .filter((c) => c.kind === 't1')
+        .map((c) => normalizeComment(c, depth + 1));
+    } else if (Array.isArray(rawReplies)) {
+      replies = rawReplies
+        .filter((c) => c.kind === 't1')
+        .map((c) => normalizeComment(c, depth + 1));
+    }
   }
   return { ...data, replies };
 }

@@ -13,19 +13,37 @@ services:
       # REQUIRED in production — set a strong secret
       JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in .env}
       JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-7d}
-      ALLOW_REGISTRATION: ${ALLOW_REGISTRATION:-true}
+      # Disable registration by default in prod; enable only while seeding
+      ALLOW_REGISTRATION: ${ALLOW_REGISTRATION:-false}
       DEFAULT_USERNAME: ${DEFAULT_USERNAME:-Ark}
       DEFAULT_PASSWORD: ${DEFAULT_PASSWORD:-}
       REDDIT_USER_AGENT: ${REDDIT_USER_AGENT:-android:com.reddit.frontpage:1.0.0 (by /u/redlib)}
-      REDDIT_CACHE_BUDGET_MB: ${REDDIT_CACHE_BUDGET_MB:-1024}
-      # Persist DB + cache in ./data next to this compose file
+      # Persist DB in ./data next to this compose file
       DATA_DIR: /app/data
     volumes:
       - ./data:/app/data
     networks:
       - prod-proxy
-
-
+    # Container hardening: no new privileges, drop all capabilities, read-only
+    # rootfs (writes only to the /app/data volume), bounded log rotation.
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    read_only: true
+    tmpfs:
+      - /tmp
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
 
 networks:
   prod-proxy:

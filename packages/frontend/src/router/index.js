@@ -1,19 +1,14 @@
 import { createRouter, createWebHistory } from 'vue-router';
 import { useAuthStore } from '../stores/useAuthStore.js';
-import HomeView from '../views/HomeView.vue';
-import LoginView from '../views/LoginView.vue';
-import SubredditView from '../views/SubredditView.vue';
-import ThreadView from '../views/ThreadView.vue';
-import SettingsView from '../views/SettingsView.vue';
-import SavedPostsView from '../views/SavedPostsView.vue';
 
+// Lazy-load views for code-splitting (ThreadView pulls the heaviest tree)
 const routes = [
-  { path: '/login', name: 'login', component: LoginView, meta: { public: true, title: 'Log in' } },
-  { path: '/', name: 'home', component: HomeView, meta: { title: 'Home' } },
-  { path: '/r/:subreddit', name: 'subreddit', component: SubredditView, props: true, meta: { title: 'r/:subreddit' } },
-  { path: '/r/:subreddit/comments/:postId', name: 'thread', component: ThreadView, props: true, meta: { title: 'Thread' } },
-  { path: '/settings', name: 'settings', component: SettingsView, meta: { title: 'Settings' } },
-  { path: '/saved', name: 'saved', component: SavedPostsView, meta: { title: 'Saved' } },
+  { path: '/login', name: 'login', component: () => import('../views/LoginView.vue'), meta: { public: true, title: 'Log in' } },
+  { path: '/', name: 'home', component: () => import('../views/HomeView.vue'), meta: { title: 'Home' } },
+  { path: '/r/:subreddit', name: 'subreddit', component: () => import('../views/SubredditView.vue'), props: true, meta: { title: 'r/:subreddit' } },
+  { path: '/r/:subreddit/comments/:postId', name: 'thread', component: () => import('../views/ThreadView.vue'), props: true, meta: { title: 'Thread' } },
+  { path: '/settings', name: 'settings', component: () => import('../views/SettingsView.vue'), meta: { title: 'Settings' } },
+  { path: '/saved', name: 'saved', component: () => import('../views/SavedPostsView.vue'), meta: { title: 'Saved' } },
 ];
 
 const router = createRouter({

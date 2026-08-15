@@ -30,9 +30,8 @@ watch(
       settings.load();
       postStore.loadSaved();
     } else {
-      settings.subscriptions = [];
-      settings.blocks = { keywords: [], users: [], subreddits: [], flairs: [] };
-      postStore.saved = [];
+      settings.clear();
+      postStore.clear();
     }
   }
 );
@@ -40,16 +39,19 @@ watch(
 
 <template>
   <div class="min-h-screen flex flex-col">
+    <a href="#main" class="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-50 focus:bg-white focus:px-3 focus:py-2 focus:rounded focus:shadow">
+      Skip to content
+    </a>
     <template v-if="!isPublic">
       <Navbar @toggle-drawer="drawerOpen = !drawerOpen" />
       <div class="flex flex-1 max-w-[1600px] w-full mx-auto">
         <Sidebar :open="drawerOpen" @close="drawerOpen = false" />
-        <main class="flex-1 min-w-0 px-2 sm:px-4 py-4">
+        <main id="main" class="flex-1 min-w-0 px-2 sm:px-4 py-4">
           <router-view />
         </main>
       </div>
     </template>
-    <main v-else class="flex-1 flex flex-col">
+    <main v-else id="main" class="flex-1 flex flex-col">
       <router-view />
     </main>
     <ToastContainer />

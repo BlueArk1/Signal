@@ -1,36 +1,31 @@
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
-import { api, setToken, getToken } from '../api/client.js';
-
-// Decode JWT payload (unverified — used only to restore display info on refresh)
-function decodeToken(token) {
-  try {
-    const payload = token.split('.')[1];
-    const json = atob(payload.replace(/-/g, '+').replace(/_/g, '/'));
-    return JSON.parse(decodeURIComponent(escape(json)));
-  } catch {
-    return null;
-  }
-}
+import { api } from '../api/client.js';
 
 export const useAuthStore = defineStore('auth', () => {
-  const token = ref(getToken());
-  // Restore user info from the stored token so the username survives refresh
-  const user = ref(token.value ? decodeToken(token.value) : null);
+  const user = ref(null);
   const loading = ref(false);
   const error = ref('');
 
-  const isAuthenticated = computed(() => !!token.value);
+  const isAuthenticated = computed(() => !!user.value);
   const mustChangePassword = computed(() => !!user.value?.mustChangePassword);
+
+  // Restore the session from the httpOnly cookie on app load
+  async function restore() {
+    try {
+      const data = await api.get('/auth/me');
+      user.value = data.user;
+    } catch {
+      user.value = null;
+    }
+  }
 
   async function login(username, password) {
     loading.value = true;
     error.value = '';
     try {
       const data = await api.post('/auth/login', { username, password });
-      token.value = data.token;
       user.value = data.user;
-      setToken(data.token);
       return true;
     } catch (e) {
       error.value = e.message;
@@ -45,9 +40,7 @@ export const useAuthStore = defineStore('auth', () => {
     error.value = '';
     try {
       const data = await api.post('/auth/register', { username, password });
-      token.value = data.token;
       user.value = data.user;
-      setToken(data.token);
       return true;
     } catch (e) {
       error.value = e.message;
@@ -57,10 +50,13 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  function logout() {
-    token.value = null;
+  async function logout() {
+    try {
+      await api.post('/auth/logout');
+    } catch {
+      // ignore — clear locally regardless
+    }
     user.value = null;
-    setToken(null);
   }
 
   async function changePassword(currentPassword, newPassword) {
@@ -80,12 +76,12 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   return {
-    token,
     user,
     loading,
     error,
     isAuthenticated,
     mustChangePassword,
+    restore,
     login,
     register,
     logout,

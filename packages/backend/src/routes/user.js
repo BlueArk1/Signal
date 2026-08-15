@@ -2,6 +2,7 @@ import { Router } from 'express';
 import db from '../db/schema.js';
 import { authRequired } from '../middleware/auth.js';
 import { getSubredditPosts } from '../services/redditService.js';
+import { invalidateBlockRules } from '../services/filterService.js';
 import { isValidSubreddit } from '../utils/validate.js';
 
 const router = Router();
@@ -36,9 +37,14 @@ router.delete('/subscriptions/:subreddit', (req, res) => {
 
 // ---- Saved posts ----
 router.get('/saved-posts', (req, res) => {
+  const limit = Math.min(parseInt(req.query.limit, 10) || 50, 100);
+  const offset = Math.max(parseInt(req.query.offset, 10) || 0, 0);
+  // Select explicit columns (never leak user_id) with pagination
   const rows = db
-    .prepare('SELECT * FROM saved_posts WHERE user_id = ? ORDER BY saved_at DESC')
-    .all(req.user.id);
+    .prepare(
+      'SELECT post_id, subreddit, title, saved_at FROM saved_posts WHERE user_id = ? ORDER BY saved_at DESC LIMIT ? OFFSET ?'
+    )
+    .all(req.user.id, limit, offset);
   res.json({ savedPosts: rows });
 });
 
@@ -82,14 +88,10 @@ router.get('/blocks', (req, res) => {
 // Validate that a flair actually exists in the given subreddit by fetching
 // its listing and checking the link_flair_text values.
 async function flairExists(subreddit, flair) {
-  try {
-    const { posts } = await getSubredditPosts(subreddit, 'hot', 100);
-    return posts.some(
-      (p) => (p.link_flair_text || '').toLowerCase() === flair
-    );
-  } catch {
-    return false;
-  }
+  const { posts } = await getSubredditPosts(subreddit, 'hot', 100);
+  return posts.some(
+    (p) => (p.link_flair_text || '').toLowerCase() === flair
+  );
 }
 
 router.post('/blocks', async (req, res) => {
@@ -107,13 +109,20 @@ router.post('/blocks', async (req, res) => {
     if (!isValidSubreddit(sub)) {
       return res.status(400).json({ error: 'Invalid subreddit' });
     }
-    const valid = await flairExists(sub, clean);
+    let valid;
+    try {
+      valid = await flairExists(sub, clean);
+    } catch (err) {
+      // Network/upstream failure — don't mask as "flair not found"
+      return res.status(err.status || 502).json({ error: err.message || 'Failed to validate flair' });
+    }
     if (!valid) return res.status(400).json({ error: `Flair "${clean}" not found in r/${sub}` });
   }
 
   db.prepare(
     'INSERT OR IGNORE INTO blocked_rules (user_id, type, subreddit, value) VALUES (?, ?, ?, ?)'
   ).run(req.user.id, type, sub, clean);
+  invalidateBlockRules(req.user.id);
   res.status(201).json({ type, subreddit: sub, value: clean });
 });
 
@@ -126,6 +135,7 @@ router.delete('/blocks/:type/:value', (req, res) => {
   db.prepare(
     'DELETE FROM blocked_rules WHERE user_id = ? AND type = ? AND subreddit IS ? AND value = ?'
   ).run(req.user.id, type, sub, value.toLowerCase());
+  invalidateBlockRules(req.user.id);
   res.json({ ok: true });
 });
 

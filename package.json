@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "private": true,
   "description": "Full-stack Reddit client monorepo",
+  "engines": {
+    "node": ">=22"
+  },
   "workspaces": [
     "packages/backend",
     "packages/frontend"

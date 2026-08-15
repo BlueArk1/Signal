@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { api } from '../api/client.js';
 import { useAuthStore } from '../stores/useAuthStore.js';
@@ -30,6 +30,9 @@ async function checkRegistration() {
 }
 
 onMounted(checkRegistration);
+
+// Clear any pending debounced search on unmount so it can't fire after teardown
+onUnmounted(() => clearTimeout(debounceTimer));
 
 async function onSearch() {
   clearTimeout(debounceTimer);
@@ -64,8 +67,8 @@ function onAuthSuccess() {
   showAuth.value = false;
 }
 
-function logout() {
-  auth.logout();
+async function logout() {
+  await auth.logout();
   router.push('/');
 }
 </script>

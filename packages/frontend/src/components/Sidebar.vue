@@ -16,6 +16,7 @@ const settings = useSettingsStore();
   ></div>
 
   <aside
+    :aria-hidden="!open ? 'true' : null"
     :class="[
       'bg-white dark:bg-[#1e1e1e] border-r border-gray-300 dark:border-[#3a3a3a] w-64 shrink-0 overflow-y-auto',
       'fixed lg:sticky top-12 bottom-0 z-30 transition-transform lg:translate-x-0',

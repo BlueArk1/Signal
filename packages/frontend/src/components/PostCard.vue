@@ -61,12 +61,16 @@ function openThread() {
 
 async function toggleSave() {
   if (!auth.isAuthenticated) return;
-  if (saved.value) {
-    await postStore.unsavePost(props.post.id);
-    toast.push('Post unsaved');
-  } else {
-    await postStore.savePost(props.post);
-    toast.push('Post saved');
+  try {
+    if (saved.value) {
+      await postStore.unsavePost(props.post.id);
+      toast.push('Post unsaved');
+    } else {
+      await postStore.savePost(props.post);
+      toast.push('Post saved');
+    }
+  } catch (e) {
+    toast.push(e.message || 'Failed to update save', 'error');
   }
 }
 </script>
@@ -81,7 +85,7 @@ async function toggleSave() {
       v-if="!hideImages && imageSrc"
       :href="post.url"
       target="_blank"
-      rel="noopener"
+      rel="noopener noreferrer"
       class="block sm:shrink-0 sm:w-48 sm:self-stretch"
       @click.stop
     >
@@ -135,7 +139,7 @@ async function toggleSave() {
           v-if="domain"
           :href="post.url"
           target="_blank"
-          rel="noopener"
+          rel="noopener noreferrer"
           class="shrink-0 mt-0.5 text-gray-400 dark:text-gray-500 hover:text-[#0d6efd]"
           :aria-label="`Open ${post.url}`"
           @click.stop
@@ -166,6 +170,7 @@ async function toggleSave() {
         <div
           v-if="auth.isAuthenticated && !confirmBlock"
           class="relative"
+          data-block-menu
           @click.stop
         >
           <button

@@ -1,16 +1,5 @@
 import { useToastStore } from '../stores/useToastStore.js';
 
-const TOKEN_KEY = 'signal_token';
-
-export function getToken() {
-  return localStorage.getItem(TOKEN_KEY);
-}
-
-export function setToken(token) {
-  if (token) localStorage.setItem(TOKEN_KEY, token);
-  else localStorage.removeItem(TOKEN_KEY);
-}
-
 // Show a toast when Reddit rate-limits us (429). 2s timer.
 function notifyRateLimited() {
   try {
@@ -23,12 +12,12 @@ function notifyRateLimited() {
 
 async function request(path, options = {}) {
   const headers = { 'Content-Type': 'application/json', ...(options.headers || {}) };
-  const token = getToken();
-  if (token) headers.Authorization = `Bearer ${token}`;
 
   const res = await fetch(`/api${path}`, {
     ...options,
     headers,
+    // Send httpOnly auth cookie with every request
+    credentials: 'include',
     body: options.body ? JSON.stringify(options.body) : undefined,
   });
 
@@ -40,10 +29,6 @@ async function request(path, options = {}) {
   }
 
   if (!res.ok) {
-    // On 401, clear the expired token (session ended)
-    if (res.status === 401) {
-      setToken(null);
-    }
     // On 429 (rate limited by Reddit), notify the user
     if (res.status === 429) {
       notifyRateLimited();

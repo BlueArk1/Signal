@@ -1,4 +1,4 @@
-import { ref, unref } from 'vue';
+import { ref, unref, onMounted, onUnmounted } from 'vue';
 import { useAuthStore } from '../stores/useAuthStore.js';
 import { useSettingsStore } from '../stores/useSettingsStore.js';
 
@@ -32,6 +32,15 @@ export function useBlockActions(post) {
     closeMenu();
     confirmFlair.value = true;
   }
+
+  // Close the menu when clicking anywhere outside it
+  function onDocClick(e) {
+    if (menuOpen.value && !e.target.closest('[data-block-menu]')) {
+      closeMenu();
+    }
+  }
+  onMounted(() => document.addEventListener('click', onDocClick));
+  onUnmounted(() => document.removeEventListener('click', onDocClick));
 
   async function blockUser() {
     if (!auth.isAuthenticated) return;

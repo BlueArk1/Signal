@@ -45,5 +45,9 @@ export const usePostStore = defineStore('post', () => {
     saved.value = saved.value.filter((p) => p.post_id !== postId);
   }
 
-  return { saved, loading, loadSaved, isSaved, savePost, unsavePost };
+  function clear() {
+    saved.value = [];
+  }
+
+  return { saved, loading, loadSaved, isSaved, savePost, unsavePost, clear };
 });

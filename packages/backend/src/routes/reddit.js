@@ -5,7 +5,6 @@ import {
   searchSubreddits,
   redditLimiter,
 } from '../services/redditService.js';
-import { diskCacheStats } from '../services/diskCache.js';
 import { filterPosts } from '../services/filterService.js';
 import { authRequired } from '../middleware/auth.js';
 import { isValidSubreddit, isValidPostId } from '../utils/validate.js';
@@ -13,11 +12,6 @@ import { isValidSubreddit, isValidPostId } from '../utils/validate.js';
 const router = Router();
 
 const SORTS = ['hot', 'new', 'top', 'controversial'];
-
-// GET /api/reddit/cache/stats
-router.get('/cache/stats', authRequired, (req, res) => {
-  res.json(diskCacheStats());
-});
 
 // GET /api/reddit/r/:subreddit?sort=hot&limit=25&after=t3_xxx
 router.get('/r/:subreddit', authRequired, redditLimiter, async (req, res) => {

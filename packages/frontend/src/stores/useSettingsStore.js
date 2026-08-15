@@ -53,9 +53,10 @@ export const useSettingsStore = defineStore('settings', () => {
 
   async function unsubscribe(subreddit) {
     if (!auth.isAuthenticated) return;
-    await api.del(`/user/subscriptions/${subreddit}`);
-    subscriptions.value = subscriptions.value.filter((s) => s !== subreddit);
-    toast.push(`Unsubscribed from r/${subreddit}`);
+    const sub = subreddit.toLowerCase();
+    await api.del(`/user/subscriptions/${sub}`);
+    subscriptions.value = subscriptions.value.filter((s) => s !== sub);
+    toast.push(`Unsubscribed from r/${sub}`);
   }
 
   async function addBlock(type, value, subreddit) {
@@ -93,12 +94,18 @@ export const useSettingsStore = defineStore('settings', () => {
     toast.push(`Removed block: ${value}`);
   }
 
+  function clear() {
+    subscriptions.value = [];
+    blocks.value = { keywords: [], users: [], subreddits: [], flairs: [] };
+  }
+
   return {
     subscriptions,
     blocks,
     loading,
     isAuthenticated,
     load,
+    clear,
     subscribe,
     unsubscribe,
     addBlock,

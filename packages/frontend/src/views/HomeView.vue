@@ -11,8 +11,13 @@ const settings = useSettingsStore();
 
 useInfiniteScroll(() => feed.loadMore());
 
+// Skip the first subscription-watch trigger: onMounted already loads, and
+// settings.load() populating subscriptions on mount would cause a double fetch.
+let initialLoadDone = false;
+
 async function load() {
   await feed.fetchHome(settings.subscriptions);
+  initialLoadDone = true;
 }
 
 onMounted(load);
@@ -23,10 +28,11 @@ watch(
     load();
   }
 );
-// Watch the subscriptions array deeply so reordering/swap also refires
+// Watch the subscriptions array deeply so reordering/swap also refires.
 watch(
   () => settings.subscriptions,
   () => {
+    if (!initialLoadDone) return;
     feed.resetShuffle();
     load();
   },

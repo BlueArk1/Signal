@@ -1,5 +1,5 @@
 # ---- Build stage: install deps + build frontend ----
-FROM node:22-alpine AS build
+FROM node:22.11.0-alpine3.20 AS build
 WORKDIR /app
 
 # Copy manifests first for layer caching
@@ -15,7 +15,7 @@ COPY packages/frontend packages/frontend
 RUN npm run build -w packages/frontend
 
 # ---- Runtime stage: slim alpine ----
-FROM node:22-alpine AS runtime
+FROM node:22.11.0-alpine3.20 AS runtime
 WORKDIR /app
 
 ENV NODE_ENV=production
@@ -32,7 +32,7 @@ COPY --from=build /app/packages/frontend/dist packages/frontend/dist
 
 # Non-root user for security. Entrypoint chowns the (possibly bind-mounted)
 # data dir, then drops privileges from root to this user.
-RUN apk add --no-cache su-exec \
+RUN apk add --no-cache su-exec wget \
   && addgroup -S signal && adduser -S signal -G signal \
   && mkdir -p /app/data
 

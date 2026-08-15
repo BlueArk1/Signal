@@ -8,6 +8,25 @@ const router = Router();
 
 const REGISTRATION_ENABLED = process.env.ALLOW_REGISTRATION !== 'false';
 
+// httpOnly cookie options — token not readable by JS (XSS-safe)
+const COOKIE_NAME = 'signal_token';
+const isProd = process.env.NODE_ENV === 'production';
+const cookieOptions = {
+  httpOnly: true,
+  sameSite: 'lax',
+  secure: isProd,
+  maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+  path: '/',
+};
+
+function setAuthCookie(res, token) {
+  res.cookie(COOKIE_NAME, token, cookieOptions);
+}
+
+function clearAuthCookie(res) {
+  res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: undefined });
+}
+
 // Rate limit auth endpoints to prevent brute-force / credential stuffing.
 // Key by IP + username so one abuser behind a shared NAT can't lock out others.
 const authLimiter = rateLimit({
@@ -82,7 +101,9 @@ router.post('/register', authLimiter, async (req, res) => {
   // node:sqlite may return lastInsertRowid as BigInt — coerce to Number so
   // jwt.sign/JSON.stringify don't throw on BigInt serialization.
   const user = { id: Number(info.lastInsertRowid), username: clean, token_version: 0 };
-  res.status(201).json({ token: signToken(user), user });
+  const token = signToken(user);
+  setAuthCookie(res, token);
+  res.status(201).json({ token, user });
 });
 
 router.post('/login', authLimiter, async (req, res) => {
@@ -106,7 +127,31 @@ router.post('/login', authLimiter, async (req, res) => {
     token_version: user.token_version,
     mustChangePassword: !!user.must_change_password,
   };
-  res.json({ token: signToken(payload), user: payload });
+  const token = signToken(payload);
+  setAuthCookie(res, token);
+  res.json({ token, user: payload });
+});
+
+// Logout — clear the httpOnly cookie
+router.post('/logout', (req, res) => {
+  clearAuthCookie(res);
+  res.json({ ok: true });
+});
+
+// Return the current authenticated user (for session restore on refresh)
+router.get('/me', authRequired, (req, res) => {
+  const row = db
+    .prepare('SELECT id, username, token_version, must_change_password FROM users WHERE id = ?')
+    .get(req.user.id);
+  if (!row) return res.status(401).json({ error: 'User not found' });
+  res.json({
+    user: {
+      id: row.id,
+      username: row.username,
+      token_version: row.token_version,
+      mustChangePassword: !!row.must_change_password,
+    },
+  });
 });
 
 // Change password for the authenticated user

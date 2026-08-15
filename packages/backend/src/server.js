@@ -2,6 +2,7 @@ import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
+import cookieParser from 'cookie-parser';
 import path from 'node:path';
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -41,8 +42,11 @@ app.use(
       err.status = 403;
       return callback(err);
     },
+    credentials: true,
   })
 );
+// Parse cookies (for httpOnly auth token)
+app.use(cookieParser());
 // Explicit body size limit
 app.use(express.json({ limit: '16kb' }));
 

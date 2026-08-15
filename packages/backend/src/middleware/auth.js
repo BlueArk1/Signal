@@ -14,6 +14,21 @@ if (!JWT_SECRET || JWT_SECRET === 'dev-secret' || JWT_SECRET === 'change-me-to-a
 const ACTIVE_SECRET = JWT_SECRET || 'dev-secret';
 const JWT_ALGORITHM = 'HS256';
 
+// Short-TTL memoization of token_version lookups to avoid a DB query on every
+// authenticated request. Invalidated by the 5s TTL (password changes bump
+// token_version and are rare).
+const tvCache = new Map(); // userId -> { tv, expiresAt }
+const TV_TTL_MS = 5000;
+
+function getTokenVersion(userId) {
+  const cached = tvCache.get(userId);
+  if (cached && Date.now() < cached.expiresAt) return cached.tv;
+  const row = db.prepare('SELECT token_version FROM users WHERE id = ?').get(userId);
+  const tv = row ? row.token_version : null;
+  tvCache.set(userId, { tv, expiresAt: Date.now() + TV_TTL_MS });
+  return tv;
+}
+
 export function signToken(user) {
   return jwt.sign(
     { id: user.id, username: user.username, tv: user.token_version ?? 0 },
@@ -27,14 +42,16 @@ export function signToken(user) {
 function verifyToken(token) {
   const payload = jwt.verify(token, ACTIVE_SECRET, { algorithms: [JWT_ALGORITHM] });
   if (typeof payload.tv !== 'number') return null;
-  const row = db.prepare('SELECT token_version FROM users WHERE id = ?').get(payload.id);
-  if (!row || row.token_version !== payload.tv) return null;
+  const tv = getTokenVersion(payload.id);
+  if (tv === null || tv !== payload.tv) return null;
   return payload;
 }
 
 export function authRequired(req, res, next) {
+  // Accept token from Authorization header (legacy) or httpOnly cookie
   const header = req.headers.authorization || '';
-  const token = header.startsWith('Bearer ') ? header.slice(7) : null;
+  const bearer = header.startsWith('Bearer ') ? header.slice(7) : null;
+  const token = bearer || req.cookies?.token || null;
   if (!token) {
     return res.status(401).json({ error: 'Authentication required' });
   }

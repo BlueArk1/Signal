@@ -11,7 +11,7 @@ const typeStyles = {
 </script>
 
 <template>
-  <div class="fixed bottom-4 right-4 z-100 flex flex-col gap-2">
+  <div class="fixed bottom-4 right-4 z-100 flex flex-col gap-2" aria-live="polite" role="status">
     <transition-group name="toast">
       <div
         v-for="t in toast.toasts"
@@ -27,7 +27,11 @@ const typeStyles = {
         >
           {{ t.action.label }}
         </button>
-        <button class="opacity-70 hover:opacity-100 text-base leading-none" @click="toast.remove(t.id)">×</button>
+        <button
+          class="opacity-70 hover:opacity-100 text-base leading-none"
+          aria-label="Dismiss notification"
+          @click="toast.remove(t.id)"
+        >×</button>
       </div>
     </transition-group>
   </div>

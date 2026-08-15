@@ -148,6 +148,8 @@ export const useFeedStore = defineStore('feed', () => {
       }
     } catch (e) {
       error.value = e.message;
+      // Stop retrying on failure — otherwise scroll keeps hammering the API
+      hasMore.value = false;
     } finally {
       loadingMore.value = false;
     }
