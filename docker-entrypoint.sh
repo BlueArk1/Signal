@@ -1,11 +1,13 @@
 #!/bin/sh
 set -eu
 
-# Ensure the (possibly bind-mounted) data dir is writable by the app user.
-# Only chown when ownership is wrong — avoids a slow recursive chown on every
-# restart (especially with a large data dir).
-if [ "$(stat -c %u /app/data)" != "$(id -u signal)" ]; then
-  chown -R signal:signal /app/data
+# Running as the non-root 'signal' user (see Dockerfile USER signal).
+# The bind-mounted /app/data must be writable by this user. If it isn't,
+# fail with a clear message instead of a cryptic error.
+if [ ! -w /app/data ]; then
+  echo "ERROR: /app/data is not writable by the signal user." >&2
+  echo "Fix ownership on the host: chown -R <uid-of-signal> ./data" >&2
+  exit 1
 fi
 
-exec su-exec signal node packages/backend/src/server.js
+exec node packages/backend/src/server.js

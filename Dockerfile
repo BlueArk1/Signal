@@ -30,14 +30,18 @@ COPY packages/backend/src packages/backend/src
 # Copy built frontend from build stage
 COPY --from=build /app/packages/frontend/dist packages/frontend/dist
 
-# Non-root user for security. Entrypoint chowns the (possibly bind-mounted)
-# data dir, then drops privileges from root to this user.
-RUN apk add --no-cache su-exec wget \
+# Non-root user for security. With cap_drop:ALL + no-new-privileges, su-exec
+# can't drop privileges (setgroups needs CAP_SETGID), so run directly as the
+# signal user instead.
+RUN apk add --no-cache wget \
   && addgroup -S signal && adduser -S signal -G signal \
-  && mkdir -p /app/data
+  && mkdir -p /app/data \
+  && chown -R signal:signal /app
 
 COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+
+USER signal
 
 EXPOSE 3000
 
