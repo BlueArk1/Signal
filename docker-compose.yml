@@ -1,0 +1,24 @@
+services:
+  signal:
+    build: .
+    container_name: signal
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      # Same-origin requests need no CORS origin; keep localhost for dev
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173,http://localhost:5174}
+      # REQUIRED in production — set a strong secret
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in .env}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-7d}
+      ALLOW_REGISTRATION: ${ALLOW_REGISTRATION:-true}
+      DEFAULT_USERNAME: ${DEFAULT_USERNAME:-Ark}
+      DEFAULT_PASSWORD: ${DEFAULT_PASSWORD:-}
+      REDDIT_USER_AGENT: ${REDDIT_USER_AGENT:-android:com.reddit.frontpage:1.0.0 (by /u/redlib)}
+      REDDIT_CACHE_BUDGET_MB: ${REDDIT_CACHE_BUDGET_MB:-1024}
+      # Persist DB + cache in ./data next to this compose file
+      DATA_DIR: /app/data
+    volumes:
+      - ./data:/app/data
