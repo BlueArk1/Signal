@@ -40,20 +40,11 @@ export function signToken(user) {
 // Verify token signature + check token_version matches current DB value.
 // Returns the verified payload or null.
 function verifyToken(token) {
-  try {
-    const payload = jwt.verify(token, ACTIVE_SECRET, { algorithms: [JWT_ALGORITHM] });
-    if (typeof payload.tv !== 'number') {
-      console.log('[auth] verify: tv not a number', payload.tv);
-      return null;
-    }
-    const tv = getTokenVersion(payload.id);
-    console.log('[auth] verify: payload.tv=', payload.tv, 'db.tv=', tv, 'id=', payload.id);
-    if (tv === null || tv !== payload.tv) return null;
-    return payload;
-  } catch (e) {
-    console.log('[auth] verify ERROR:', e.message);
-    return null;
-  }
+  const payload = jwt.verify(token, ACTIVE_SECRET, { algorithms: [JWT_ALGORITHM] });
+  if (typeof payload.tv !== 'number') return null;
+  const tv = getTokenVersion(payload.id);
+  if (tv === null || tv !== payload.tv) return null;
+  return payload;
 }
 
 export function authRequired(req, res, next) {
@@ -61,9 +52,6 @@ export function authRequired(req, res, next) {
   const header = req.headers.authorization || '';
   const bearer = header.startsWith('Bearer ') ? header.slice(7) : null;
   const token = bearer || req.cookies?.signal_token || null;
-  // TEMP DIAGNOSTIC
-  console.log('[auth] cookies:', JSON.stringify(req.cookies));
-  console.log('[auth] hasToken:', !!token, 'bearer:', !!bearer);
   if (!token) {
     return res.status(401).json({ error: 'Authentication required' });
   }
