@@ -8,19 +8,15 @@ const router = Router();
 
 const REGISTRATION_ENABLED = process.env.ALLOW_REGISTRATION !== 'false';
 
-// httpOnly cookie options — token not readable by JS (XSS-safe)
+// httpOnly cookie options — token not readable by JS (XSS-safe).
+// Container serves HTTPS directly (self-signed cert), so Secure cookies
+// work end-to-end even behind a reverse proxy.
 const COOKIE_NAME = 'signal_token';
 const isProd = process.env.NODE_ENV === 'production';
-// Secure cookie by default in production, but allow override for setups where
-// TLS is terminated at a reverse proxy and the upstream is plain HTTP (the
-// browser would otherwise drop a Secure cookie over http://).
-const cookieSecure = process.env.COOKIE_SECURE !== undefined
-  ? process.env.COOKIE_SECURE === 'true'
-  : isProd;
 const cookieOptions = {
   httpOnly: true,
   sameSite: 'lax',
-  secure: cookieSecure,
+  secure: isProd,
   maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
   path: '/',
 };

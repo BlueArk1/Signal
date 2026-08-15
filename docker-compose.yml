@@ -13,9 +13,6 @@ services:
       # REQUIRED in production — set a strong secret
       JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in .env}
       JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-7d}
-      # Set to false when TLS is terminated at the reverse proxy and the
-      # upstream is plain HTTP (browser drops Secure cookies over http://)
-      COOKIE_SECURE: ${COOKIE_SECURE:-true}
       # Disable registration by default in prod; enable only while seeding
       ALLOW_REGISTRATION: ${ALLOW_REGISTRATION:-false}
       DEFAULT_USERNAME: ${DEFAULT_USERNAME:-Ark}
@@ -42,7 +39,7 @@ services:
         max-size: "10m"
         max-file: "3"
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:3000/api/health"]
+      test: ["CMD", "wget", "--no-check-certificate", "-qO-", "https://localhost:3000/api/health"]
       interval: 30s
       timeout: 5s
       retries: 3

@@ -33,9 +33,15 @@ COPY --from=build /app/packages/frontend/dist packages/frontend/dist
 # Non-root user for security. With cap_drop:ALL + no-new-privileges, su-exec
 # can't drop privileges (setgroups needs CAP_SETGID), so run directly as the
 # signal user instead.
-RUN apk add --no-cache wget \
+# Generate a self-signed TLS cert so Express can serve HTTPS directly inside
+# the container. This ensures Secure cookies work with reverse proxies that
+# forward to the container over HTTPS.
+RUN apk add --no-cache wget openssl \
   && addgroup -S signal && adduser -S signal -G signal \
-  && mkdir -p /app/data \
+  && mkdir -p /app/data /app/certs \
+  && openssl req -x509 -newkey rsa:2048 -nodes \
+       -keyout /app/certs/key.pem -out /app/certs/cert.pem \
+       -days 3650 -subj '/CN=signal' \
   && chown -R signal:signal /app
 
 COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh

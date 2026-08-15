@@ -3,6 +3,7 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
+import https from 'node:https';
 import path from 'node:path';
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -79,14 +80,25 @@ app.use((err, req, res, next) => {
   res.status(status).json({ error: err.message || 'Internal server error' });
 });
 
-const server = app.listen(PORT, () => {
-  console.log(`[backend] listening on http://localhost:${PORT}`);
+// Use HTTPS when TLS certs are available (generated at build time in Docker),
+// falling back to HTTP for local dev without certs.
+const TLS_KEY = process.env.TLS_KEY || '/app/certs/key.pem';
+const TLS_CERT = process.env.TLS_CERT || '/app/certs/cert.pem';
+const hasTls = fs.existsSync(TLS_KEY) && fs.existsSync(TLS_CERT);
+
+const server = hasTls
+  ? https.createServer({ key: fs.readFileSync(TLS_KEY), cert: fs.readFileSync(TLS_CERT) }, app)
+  : app;
+
+const listener = (hasTls ? server : app).listen(PORT, () => {
+  const proto = hasTls ? 'https' : 'http';
+  console.log(`[backend] listening on ${proto}://localhost:${PORT}`);
 });
 
 // Graceful shutdown — close SQLite WAL cleanly
 async function shutdown(signal) {
   console.log(`[backend] ${signal} received, shutting down...`);
-  server.close(async () => {
+  listener.close(async () => {
     try {
       const { default: db } = await import('./db/schema.js');
       db.close();
